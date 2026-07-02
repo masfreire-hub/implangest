@@ -198,24 +198,51 @@ tr:last-child td{border-bottom:none;}
 
 <!-- LOGIN -->
 <div id="loginScreen" style="position:fixed;inset:0;background:linear-gradient(135deg,var(--brand) 0%,var(--brand2) 100%);z-index:9998;display:none;align-items:center;justify-content:center;padding:16px;">
-  <div style="background:#fff;border-radius:var(--rc);padding:36px;width:100%;max-width:380px;box-shadow:0 8px 40px rgba(91,33,182,.25);">
+
+  <!-- TELA ENTRAR -->
+  <div id="telaLogin" style="background:#fff;border-radius:var(--rc);padding:36px;width:100%;max-width:380px;box-shadow:0 8px 40px rgba(91,33,182,.25);">
     <div style="text-align:center;margin-bottom:24px;">
       <div style="width:52px;height:52px;background:linear-gradient(135deg,var(--brand),var(--brand2));border-radius:var(--rb);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;">🚀</div>
       <div style="font-size:22px;font-weight:800;color:var(--tx);">ImplanGest</div>
       <div style="font-size:12px;color:var(--tx3);margin-top:3px;">Gestão de Implantações</div>
     </div>
-    <div style="margin-bottom:14px;">
-      <label style="display:block;font-size:10px;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">E-mail</label>
-      <input type="email" id="lgEmail" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="fg"><label class="fl">E-mail</label>
+      <input type="email" id="lgEmail" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')el('lgSenha').focus()">
     </div>
-    <div style="margin-bottom:20px;">
-      <label style="display:block;font-size:10px;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">Senha</label>
+    <div class="fg"><label class="fl">Senha</label>
       <input type="password" id="lgSenha" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
-    <button onclick="doLogin()" style="width:100%;padding:11px;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:none;border-radius:var(--ra);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;">Entrar no sistema</button>
-    <p id="lgErro" style="font-size:11px;color:var(--err);text-align:center;margin-top:10px;display:none;">E-mail ou senha incorretos</p>
-    <p style="font-size:10px;color:var(--tx3);text-align:center;margin-top:12px;">Acesso restrito — apenas gestora autorizada</p>
+    <button onclick="doLogin()" style="width:100%;padding:11px;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:none;border-radius:var(--ra);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;margin-bottom:12px;">Entrar no sistema</button>
+    <p id="lgErro" style="font-size:11px;color:var(--err);text-align:center;margin-top:4px;display:none;font-weight:700;"></p>
+    <div style="text-align:center;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <span style="font-size:12px;color:var(--tx3);">Primeiro acesso? </span>
+      <button onclick="mostrarCadastro()" style="background:none;border:none;color:var(--brand2);font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline;font-family:inherit;">Cadastre seu acesso</button>
+    </div>
   </div>
+
+  <!-- TELA CADASTRO -->
+  <div id="telaCadastro" style="display:none;background:#fff;border-radius:var(--rc);padding:36px;width:100%;max-width:380px;box-shadow:0 8px 40px rgba(91,33,182,.25);">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="width:52px;height:52px;background:linear-gradient(135deg,var(--brand),var(--brand2));border-radius:var(--rb);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;">🔐</div>
+      <div style="font-size:20px;font-weight:800;color:var(--tx);">Criar Acesso</div>
+      <div style="font-size:12px;color:var(--tx3);margin-top:3px;">Defina seu e-mail e senha</div>
+    </div>
+    <div class="fg"><label class="fl">E-mail *</label>
+      <input type="email" id="cadEmail" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')el('cadSenha').focus()">
+    </div>
+    <div class="fg"><label class="fl">Senha * (mín. 6 caracteres)</label>
+      <input type="password" id="cadSenha" placeholder="••••••••" onkeydown="if(event.key==='Enter')el('cadSenha2').focus()">
+    </div>
+    <div class="fg"><label class="fl">Confirmar Senha *</label>
+      <input type="password" id="cadSenha2" placeholder="••••••••" onkeydown="if(event.key==='Enter')doCadastro()">
+    </div>
+    <button onclick="doCadastro()" style="width:100%;padding:11px;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:none;border-radius:var(--ra);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;margin-bottom:12px;">✅ Criar meu acesso</button>
+    <p id="cadErro" style="font-size:11px;color:var(--err);text-align:center;margin-top:4px;display:none;font-weight:700;"></p>
+    <div style="text-align:center;margin-top:12px;">
+      <button onclick="voltarLogin()" style="background:none;border:none;color:var(--tx3);font-size:12px;cursor:pointer;font-family:inherit;">← Voltar para o login</button>
+    </div>
+  </div>
+
 </div>
 
 <div id="shell" style="display:none;">
@@ -239,8 +266,8 @@ tr:last-child td{border-bottom:none;}
       <div class="nav-item" onclick="go('sis')"><span class="ni">📦</span>Sistemas</div>
       <div class="nav-sec">Config</div>
       <div class="nav-item" onclick="go('cfg')"><span class="ni">⚙️</span>Configurações</div>
-      <div class="nav-item" onclick="logout()" style="margin-top:auto;color:var(--err);"><span class="ni">↩</span>Sair</div>
     </div>
+    <div id="navUser"></div>
   </nav>
 
   <!-- MAIN -->
@@ -2388,48 +2415,137 @@ function excluirAgendaG(id){
 }
 
 // ══════════════════════════════════════════════════════════════
-// LOGIN
+// LOGIN — CADASTRO LIVRE COM SENHA PRÓPRIA
 // ══════════════════════════════════════════════════════════════
-// Credenciais padrão (altere em Configurações)
-const DEFAULT_EMAIL = localStorage.getItem('ig3_usr_email') || 'admin@implangest.com';
-const DEFAULT_SENHA = localStorage.getItem('ig3_usr_senha') || 'implangest2024';
+let curUser = null;
+
+function senhaKey(email){ return 'ig3_pwd_' + btoa(email.toLowerCase()); }
+function isPrimeiroAcesso(email){ return !localStorage.getItem(senhaKey(email)); }
 
 function doLogin(){
   const email = el('lgEmail').value.trim().toLowerCase();
   const senha = el('lgSenha').value;
-  const okEmail = localStorage.getItem('ig3_usr_email') || DEFAULT_EMAIL;
-  const okSenha = localStorage.getItem('ig3_usr_senha') || DEFAULT_SENHA;
-  if(email === okEmail.toLowerCase() && senha === okSenha){
-    localStorage.setItem('ig3_session', btoa(email+':'+Date.now()));
-    el('loginScreen').style.display = 'none';
-    el('shell').style.display = 'flex';
-    el('lgErro').style.display = 'none';
-    go('dash');
+  if(!email || !senha){ showToastLogin('⚠️ Preencha e-mail e senha'); return; }
+  if(!email.includes('@')){ showToastLogin('⚠️ E-mail inválido'); return; }
+
+  if(isPrimeiroAcesso(email)){
+    const senha2 = el('lgSenha2').value;
+    if(senha.length < 6){ showToastLogin('⚠️ Senha deve ter no mínimo 6 caracteres'); return; }
+    if(senha !== senha2){ showToastLogin('⚠️ As senhas não coincidem'); return; }
+    localStorage.setItem(senhaKey(email), btoa(senha));
+    const nome = email.split('@')[0];
+    curUser = { nome: nome.charAt(0).toUpperCase()+nome.slice(1), email, avatar: nome.slice(0,2).toUpperCase(), cor: '#7C3AED' };
+    entrar(curUser);
   } else {
-    el('lgErro').style.display = 'block';
-    el('lgSenha').value = '';
-    el('lgSenha').focus();
+    const senhaCorreta = atob(localStorage.getItem(senhaKey(email)));
+    if(senha !== senhaCorreta){ showToastLogin('⚠️ Senha incorreta'); el('lgSenha').value=''; el('lgSenha').focus(); return; }
+    const nome = email.split('@')[0];
+    curUser = { nome: nome.charAt(0).toUpperCase()+nome.slice(1), email, avatar: nome.slice(0,2).toUpperCase(), cor: '#7C3AED' };
+    entrar(curUser);
   }
+}
+
+function mostrarCadastro(){
+  el('telaLogin').style.display='none';
+  el('telaCadastro').style.display='';
+  el('cadEmail').value=''; el('cadSenha').value=''; el('cadSenha2').value='';
+  el('cadErro').style.display='none';
+  setTimeout(()=>el('cadEmail').focus(),50);
+}
+
+function voltarLogin(){
+  el('telaCadastro').style.display='none';
+  el('telaLogin').style.display='';
+  el('lgErro').style.display='none';
+}
+
+function doCadastro(){
+  const email  = el('cadEmail').value.trim().toLowerCase();
+  const senha  = el('cadSenha').value;
+  const senha2 = el('cadSenha2').value;
+  const errDiv = el('cadErro');
+  if(!email || !email.includes('@')){ errDiv.textContent='⚠️ E-mail inválido'; errDiv.style.display='block'; return; }
+  if(senha.length < 6){ errDiv.textContent='⚠️ Senha deve ter no mínimo 6 caracteres'; errDiv.style.display='block'; return; }
+  if(senha !== senha2){ errDiv.textContent='⚠️ As senhas não coincidem'; errDiv.style.display='block'; return; }
+  if(!isPrimeiroAcesso(email)){ errDiv.textContent='⚠️ Este e-mail já possui acesso. Use a tela de login.'; errDiv.style.display='block'; return; }
+  localStorage.setItem(senhaKey(email), btoa(senha));
+  const nome = email.split('@')[0];
+  curUser = { nome: nome.charAt(0).toUpperCase()+nome.slice(1), email, avatar: nome.slice(0,2).toUpperCase(), cor: '#7C3AED' };
+  entrar(curUser);
+}
+
+function showToastLogin(msg){
+  const e = el('lgErro'); if(!e) return;
+  e.textContent = msg; e.style.display = 'block';
+}
+
+function entrar(user){
+  curUser = user;
+  localStorage.setItem('ig3_session', btoa(JSON.stringify({email: user.email, ts: Date.now()})));
+  el('loginScreen').style.display = 'none';
+  el('shell').style.display = 'flex';
+  el('lgErro').style.display = 'none';
+  renderNavUser();
+  go('dash');
 }
 
 function logout(){
   localStorage.removeItem('ig3_session');
+  curUser = null;
   el('shell').style.display = 'none';
   el('loginScreen').style.display = 'flex';
   el('lgEmail').value = '';
   el('lgSenha').value = '';
+  el('lgErro').style.display = 'none';
+  el('telaLogin').style.display = '';
+  el('telaCadastro').style.display = 'none';
 }
 
 function checkSession(){
   const sess = localStorage.getItem('ig3_session');
   if(!sess) return false;
-  // Sessão válida por 8 horas
   try {
-    const decoded = atob(sess);
-    const ts = parseInt(decoded.split(':').pop());
-    if(Date.now() - ts > 8 * 3600000){ localStorage.removeItem('ig3_session'); return false; }
+    const decoded = JSON.parse(atob(sess));
+    if(Date.now() - decoded.ts > 8 * 3600000){ localStorage.removeItem('ig3_session'); return false; }
+    const nome = decoded.email.split('@')[0];
+    curUser = { nome: nome.charAt(0).toUpperCase()+nome.slice(1), email: decoded.email, avatar: nome.slice(0,2).toUpperCase(), cor: '#7C3AED' };
     return true;
   } catch(e){ return false; }
+}
+
+function verificarPrimeiroAcesso(){
+  const email = el('lgEmail')?.value.trim().toLowerCase();
+  const bloco = el('lgBloco2');
+  const lgTitulo = el('lgTitulo');
+  const lgSub = el('lgSub');
+  const lgBtn = el('lgBtn');
+  if(!bloco) return;
+  const isPrimeiro = !email || isPrimeiroAcesso(email);
+  if(isPrimeiro && email){
+    bloco.style.display = '';
+    if(lgTitulo) lgTitulo.textContent = 'Primeiro acesso';
+    if(lgSub) lgSub.textContent = 'Crie sua senha para continuar';
+    if(lgBtn) lgBtn.textContent = '🔐 Criar conta e entrar';
+  } else {
+    bloco.style.display = 'none';
+    if(lgTitulo) lgTitulo.textContent = 'ImplanGest';
+    if(lgSub) lgSub.textContent = 'Gestão de Implantações';
+    if(lgBtn) lgBtn.textContent = 'Entrar no sistema';
+  }
+}
+
+function renderNavUser(){
+  if(!curUser) return;
+  const div = el('navUser'); if(!div) return;
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surf2);border-radius:var(--ra);margin:8px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:${curUser.cor};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">${curUser.avatar}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${curUser.nome}</div>
+        <div style="font-size:10px;color:var(--tx3);">${curUser.email}</div>
+      </div>
+      <button onclick="logout()" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:14px;" title="Sair">↩</button>
+    </div>`;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -2450,6 +2566,7 @@ async function init(){
   // Verificar sessão
   if(checkSession()){
     el('shell').style.display='flex';
+    renderNavUser();
     go('dash');
   } else {
     el('loginScreen').style.display='flex';
