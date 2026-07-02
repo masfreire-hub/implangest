@@ -1,0 +1,2461 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ImplanGest</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --brand:#5B21B6;--brand2:#7C3AED;--brand3:#A78BFA;--brand-light:#F5F3FF;
+  --bg:#F5F3FF;--surface:#FFF;--surf2:#F8F7FF;--surf3:#EDE9FE;
+  --border:#DDD6FE;--border2:#C4B5FD;
+  --tx:#1E1B4B;--tx2:#4B5563;--tx3:#9CA3AF;
+  --ok:#059669;--okbg:#ECFDF5;--okb:#A7F3D0;
+  --warn:#D97706;--warnbg:#FFFBEB;--warnb:#FDE68A;
+  --err:#DC2626;--errbg:#FEF2F2;--errb:#FECACA;
+  --info:#2563EB;--infobg:#EFF6FF;--infob:#BFDBFE;
+  --gray:#6B7280;--graybg:#F3F4F6;--grayb:#E5E7EB;
+  --pur:#7C3AED;--purbg:#F5F3FF;--purb:#DDD6FE;
+  --nav:240px;--topH:56px;
+  --ra:6px;--rb:10px;--rc:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:13px;line-height:1.5;}
+button{cursor:pointer;font-family:inherit;outline:none;border:none;}
+input,select,textarea{font-family:inherit;font-size:13px;color:var(--tx);background:var(--surface);border:1.5px solid var(--border);border-radius:var(--ra);padding:7px 10px;width:100%;transition:border-color .15s;}
+input:focus,select:focus,textarea:focus{border-color:var(--brand2);outline:none;box-shadow:0 0 0 3px rgba(124,58,237,.1);}
+textarea{resize:vertical;min-height:80px;}
+
+/* LOADING */
+#ld{position:fixed;inset:0;background:linear-gradient(135deg,var(--brand),var(--brand2));z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;transition:opacity .35s;}
+.spin{width:26px;height:26px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+/* LAYOUT */
+#shell{display:flex;min-height:100vh;}
+#nav{width:var(--nav);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;z-index:50;overflow-y:auto;}
+#navLogo{padding:18px 16px 14px;border-bottom:1px solid var(--border);}
+.nav-logo-row{display:flex;align-items:center;gap:10px;}
+.nav-logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--brand),var(--brand2));border-radius:var(--rb);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.nav-logo-name{font-size:15px;font-weight:800;color:var(--tx);}
+.nav-logo-sub{font-size:10px;color:var(--tx3);margin-top:1px;}
+#navItems{flex:1;padding:10px 8px;}
+.nav-sec{font-size:9px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;padding:10px 10px 5px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--ra);cursor:pointer;color:var(--tx2);font-size:12px;font-weight:500;transition:all .12s;margin-bottom:1px;}
+.nav-item:hover{background:var(--surf2);}
+.nav-item.on{background:var(--brand-light);color:var(--brand2);font-weight:700;}
+.nav-item .ni{font-size:15px;width:18px;text-align:center;}
+.nav-item .nb{margin-left:auto;background:var(--err);color:#fff;border-radius:20px;font-size:9px;font-weight:800;padding:1px 5px;}
+#main{margin-left:var(--nav);flex:1;display:flex;flex-direction:column;}
+#topbar{height:var(--topH);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 20px;position:sticky;top:0;z-index:40;}
+#topbar h1{font-size:16px;font-weight:800;flex:1;}
+#content{padding:20px;flex:1;}
+
+/* BTNS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--ra);font-size:12px;font-weight:700;transition:all .12s;white-space:nowrap;cursor:pointer;}
+.btn-p{background:var(--brand2);color:#fff;border:none;}
+.btn-p:hover{background:var(--brand);}
+.btn-o{background:var(--surface);color:var(--brand2);border:1.5px solid var(--border2);}
+.btn-o:hover{background:var(--surf3);}
+.btn-d{background:var(--errbg);color:var(--err);border:1px solid var(--errb);}
+.btn-sm{padding:5px 10px;font-size:11px;}
+.btn-xs{padding:2px 8px;font-size:11px;}
+
+/* CARDS DASHBOARD */
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:20px;}
+.kcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);padding:14px 16px;position:relative;overflow:hidden;}
+.kcard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
+.kc-tot::before{background:var(--brand2);}
+.kc-and::before{background:var(--info);}
+.kc-ok::before{background:var(--ok);}
+.kc-sus::before{background:var(--warn);}
+.kc-atr::before{background:var(--err);}
+.kc-ni::before{background:var(--tx3);}
+.kn{font-size:28px;font-weight:800;line-height:1;margin-bottom:4px;}
+.kl{font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;}
+.kc-tot .kn{color:var(--brand2);}
+.kc-and .kn{color:var(--info);}
+.kc-ok .kn{color:var(--ok);}
+.kc-sus .kn{color:var(--warn);}
+.kc-atr .kn{color:var(--err);}
+.kc-ni .kn{color:var(--tx3);}
+
+/* GRID LAYOUT */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);padding:16px 18px;}
+.card-title{font-size:12px;font-weight:800;color:var(--tx);margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+
+/* IA */
+/* IA removida */
+
+/* TABELA */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+th{font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+th:hover{color:var(--brand2);}
+td{padding:10px 12px;border-bottom:1px solid var(--surf2);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+.trow:hover td{background:var(--surf2);cursor:pointer;}
+
+/* BADGES */
+.bdg{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap;}
+.bd-c{background:var(--okbg);color:var(--ok);border:1px solid var(--okb);}
+.bd-a{background:var(--infobg);color:var(--info);border:1px solid var(--infob);}
+.bd-s{background:var(--warnbg);color:var(--warn);border:1px solid var(--warnb);}
+.bd-n{background:var(--graybg);color:var(--gray);border:1px solid var(--grayb);}
+.bd-m{background:var(--purbg);color:var(--pur);border:1px solid var(--purb);}
+.bd-h{background:#FDF4FF;color:#7E22CE;border:1px solid #E9D5FF;}
+.bd-x{background:var(--errbg);color:var(--err);border:1px solid var(--errb);}
+.bd-t{background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA;}
+
+/* SIS CHIPS */
+.sc{display:inline-flex;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;margin:1px;background:var(--surf3);color:var(--brand2);}
+.sc.mig{background:var(--okbg);color:var(--ok);}
+.sc.sem{background:var(--graybg);color:var(--tx3);text-decoration:line-through;}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(15,12,60,.5);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;}
+.ov.open{display:flex;}
+.modal{background:var(--surface);border-radius:var(--rc);width:100%;max-width:760px;box-shadow:0 8px 40px rgba(91,33,182,.2);margin:auto;}
+.modal-sm{max-width:480px;}
+.mhd{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-radius:var(--rc) var(--rc) 0 0;}
+.mhd-t{font-size:14px;font-weight:800;}
+.mhd-s{font-size:11px;color:var(--tx3);margin-top:1px;}
+.xb{width:28px;height:28px;border-radius:var(--ra);background:var(--surf3);color:var(--tx3);font-size:15px;display:flex;align-items:center;justify-content:center;}
+.xb:hover{background:var(--border);}
+.mbd{padding:18px 20px;}
+.mft{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--surf2);border-radius:0 0 var(--rc) var(--rc);}
+
+/* FORM */
+.fg{margin-bottom:12px;}
+.fl{display:block;font-size:10px;font-weight:800;color:var(--tx2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.stl{font-size:10px;font-weight:800;color:var(--brand2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid var(--surf3);margin-top:4px;}
+
+/* SIS GRID NO MODAL */
+.sg{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:7px;margin-bottom:12px;}
+.si{border:1.5px solid var(--border);border-radius:var(--ra);padding:8px 10px;display:flex;align-items:center;gap:7px;cursor:pointer;transition:all .1s;}
+.si:hover{border-color:var(--brand3);}
+.si.on{border-color:var(--brand2);background:var(--brand-light);}
+.si .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.si .sn{font-size:11px;font-weight:700;flex:1;}
+.si .sn span{font-weight:400;color:var(--tx3);}
+.ck{width:14px;height:14px;border:2px solid var(--border2);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .1s;}
+.ck.on{background:var(--brand2);border-color:var(--brand2);}
+.ck.on::after{content:'✓';color:#fff;font-size:9px;font-weight:900;line-height:1;}
+
+/* OBS */
+.obs-box{background:var(--warnbg);border:1px solid var(--warnb);border-radius:var(--ra);padding:10px 12px;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word;}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1E1B4B;color:#fff;padding:8px 18px;border-radius:20px;font-size:12px;font-weight:700;z-index:9999;opacity:0;transition:opacity .25s;pointer-events:none;}
+#toast.on{opacity:1;}
+
+/* FILTROS */
+.fbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.fbar input,.fbar select{max-width:190px;font-size:12px;}
+
+/* PROGRESS BAR */
+.pb{height:6px;background:var(--surf3);border-radius:3px;overflow:hidden;}
+.pb-fill{height:100%;border-radius:3px;transition:width .3s;}
+
+/* ALERTA ITEM */
+.alerta{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:var(--ra);margin-bottom:6px;}
+.alerta.err{background:var(--errbg);border-left:3px solid var(--err);}
+.alerta.warn{background:var(--warnbg);border-left:3px solid var(--warn);}
+.alerta.info{background:var(--infobg);border-left:3px solid var(--info);}
+.alerta-ico{font-size:14px;flex-shrink:0;margin-top:1px;}
+.alerta-t{font-size:12px;font-weight:700;}
+.alerta-s{font-size:11px;color:var(--tx3);margin-top:1px;}
+
+/* EMPTY */
+.empty{text-align:center;padding:36px 20px;}
+.empty .ei{font-size:32px;margin-bottom:8px;opacity:.5;}
+.empty .et{font-size:13px;font-weight:700;margin-bottom:3px;}
+.empty .es{font-size:11px;color:var(--tx3);}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  #nav{transform:translateX(-100%);}#nav.open{transform:translateX(0);}
+  #main{margin-left:0;}
+  .grid2,.grid3{grid-template-columns:1fr;}
+  .fr2,.fr3{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div id="ld">
+  <div style="font-size:44px;">🚀</div>
+  <div style="font-size:20px;font-weight:800;color:#fff;">ImplanGest</div>
+  <div style="font-size:12px;color:rgba(255,255,255,.7);">Carregando sistema...</div>
+  <div class="spin"></div>
+</div>
+
+
+<!-- LOGIN -->
+<div id="loginScreen" style="position:fixed;inset:0;background:linear-gradient(135deg,var(--brand) 0%,var(--brand2) 100%);z-index:9998;display:none;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:var(--rc);padding:36px;width:100%;max-width:380px;box-shadow:0 8px 40px rgba(91,33,182,.25);">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:52px;height:52px;background:linear-gradient(135deg,var(--brand),var(--brand2));border-radius:var(--rb);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;">🚀</div>
+      <div style="font-size:22px;font-weight:800;color:var(--tx);">ImplanGest</div>
+      <div style="font-size:12px;color:var(--tx3);margin-top:3px;">Gestão de Implantações</div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:10px;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">E-mail</label>
+      <input type="email" id="lgEmail" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-size:10px;font-weight:800;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">Senha</label>
+      <input type="password" id="lgSenha" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button onclick="doLogin()" style="width:100%;padding:11px;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:none;border-radius:var(--ra);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;">Entrar no sistema</button>
+    <p id="lgErro" style="font-size:11px;color:var(--err);text-align:center;margin-top:10px;display:none;">E-mail ou senha incorretos</p>
+    <p style="font-size:10px;color:var(--tx3);text-align:center;margin-top:12px;">Acesso restrito — apenas gestora autorizada</p>
+  </div>
+</div>
+
+<div id="shell" style="display:none;">
+  <!-- NAV -->
+  <nav id="nav">
+    <div id="navLogo">
+      <div class="nav-logo-row">
+        <div class="nav-logo-icon">🚀</div>
+        <div><div class="nav-logo-name">ImplanGest</div><div class="nav-logo-sub">Gestão de Implantações</div></div>
+      </div>
+    </div>
+    <div id="navItems">
+      <div class="nav-sec">Visão Geral</div>
+      <div class="nav-item" onclick="go('dash')"><span class="ni">📊</span>Dashboard</div>
+      <div class="nav-item" onclick="go('impl')"><span class="ni">🚀</span>Implantações<span class="nb" id="nbAtr" style="display:none">0</span></div>
+      <div class="nav-item" onclick="go('espaco')"><span class="ni">🏠</span>Meu Espaço</div>
+      <div class="nav-item" onclick="go('rel')"><span class="ni">📄</span>Relatórios</div>
+      <div class="nav-sec">Cadastros</div>
+      <div class="nav-item" onclick="go('mun')"><span class="ni">🏛️</span>Municípios</div>
+      <div class="nav-item" onclick="go('tec')"><span class="ni">👤</span>Técnicos</div>
+      <div class="nav-item" onclick="go('sis')"><span class="ni">📦</span>Sistemas</div>
+      <div class="nav-sec">Config</div>
+      <div class="nav-item" onclick="go('cfg')"><span class="ni">⚙️</span>Configurações</div>
+      <div class="nav-item" onclick="logout()" style="margin-top:auto;color:var(--err);"><span class="ni">↩</span>Sair</div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="topbar">
+      <h1 id="pgTitle">Dashboard</h1>
+      <div id="tbBtn"></div>
+    </div>
+    <div id="content"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ═══ MODAIS ═══ -->
+
+<!-- Modal Município -->
+<div class="ov" id="mMun">
+  <div class="modal modal-sm">
+    <div class="mhd"><div><div class="mhd-t" id="mMunT">Novo Município</div></div><button class="xb" onclick="closeM('mMun')">✕</button></div>
+    <div class="mbd">
+      <input type="hidden" id="munId">
+      <div class="fr2">
+        <div class="fg"><label class="fl">Nome *</label><input type="text" id="munNome" placeholder="Feira de Santana"></div>
+        <div class="fg"><label class="fl">UF</label><select id="munUf">BA SP MG RJ PR SC RS GO MT MS PA MA CE PE PB AL SE PI RN TO AM RO AC RR AP DF ES</select></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Prefixo</label><select id="munPfx"><option value="PM">PM — Prefeitura Municipal</option><option value="CM">CM — Câmara Municipal</option><option value="SD">SD — Secretaria</option><option value="">Outro</option></select></div>
+        <div class="fg"><label class="fl">Cód. IBGE</label><input type="text" id="munIbge" placeholder="2910800"></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Contato</label><input type="text" id="munCont" placeholder="Nome do contato"></div>
+        <div class="fg"><label class="fl">WhatsApp</label><input type="text" id="munWpp" placeholder="(00) 9 0000-0000"></div>
+      </div>
+      <div class="fg"><label class="fl">Observações</label><textarea id="munObs" rows="2"></textarea></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-o" onclick="closeM('mMun')">Cancelar</button>
+      <button class="btn btn-p" onclick="salvarMun()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Técnico -->
+<div class="ov" id="mTec">
+  <div class="modal modal-sm">
+    <div class="mhd"><div><div class="mhd-t" id="mTecT">Novo Técnico</div></div><button class="xb" onclick="closeM('mTec')">✕</button></div>
+    <div class="mbd">
+      <input type="hidden" id="tecId">
+      <div class="fr2">
+        <div class="fg"><label class="fl">Nome *</label><input type="text" id="tecNome" placeholder="Nome completo"></div>
+        <div class="fg"><label class="fl">E-mail</label><input type="email" id="tecEmail" placeholder="email@empresa.com"></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Cargo</label><input type="text" id="tecCargo" placeholder="Técnico de Implantação"></div>
+        <div class="fg"><label class="fl">Telefone/WhatsApp</label><input type="text" id="tecWpp" placeholder="(00) 9 0000-0000"></div>
+      </div>
+      <div class="fg"><label class="fl">Observações</label><textarea id="tecObs" rows="2"></textarea></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-o" onclick="closeM('mTec')">Cancelar</button>
+      <button class="btn btn-p" onclick="salvarTec()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Sistema -->
+<div class="ov" id="mSis">
+  <div class="modal modal-sm">
+    <div class="mhd"><div><div class="mhd-t" id="mSisT">Novo Sistema</div></div><button class="xb" onclick="closeM('mSis')">✕</button></div>
+    <div class="mbd">
+      <input type="hidden" id="sisId">
+      <div class="fr2">
+        <div class="fg"><label class="fl">Nome *</label><input type="text" id="sisNome" placeholder="Contabilidade"></div>
+        <div class="fg"><label class="fl">Sigla *</label><input type="text" id="sisSig" placeholder="CON" maxlength="5"></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Ícone (emoji)</label><input type="text" id="sisIco" placeholder="📊" maxlength="2"></div>
+        <div class="fg"><label class="fl">Cor</label><input type="color" id="sisCor" value="#7C3AED" style="height:36px;cursor:pointer;padding:2px 4px;"></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Tipo</label><select id="sisTipo"><option>Obrigatório</option><option>Opcional</option></select></div>
+        <div class="fg"><label class="fl">T. médio implantação (dias)</label><input type="number" id="sisTmp" value="30" min="1"></div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-o" onclick="closeM('mSis')">Cancelar</button>
+      <button class="btn btn-p" onclick="salvarSis()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Implantação (editar/criar) -->
+<div class="ov" id="mImpl">
+  <div class="modal">
+    <div class="mhd">
+      <div><div class="mhd-t" id="mImplT">Nova Implantação</div><div class="mhd-s" id="mImplS"></div></div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-d btn-xs" id="implDelBtn" onclick="excluirImpl()" style="display:none">🗑 Excluir</button>
+        <button class="xb" onclick="closeM('mImpl')">✕</button>
+      </div>
+    </div>
+    <div class="mbd">
+      <input type="hidden" id="implId">
+      <div class="stl">📋 Dados Gerais</div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Município *</label><select id="implMun"><option value="">Selecione...</option></select></div>
+        <div class="fg"><label class="fl">Técnico Responsável</label><select id="implTec"><option value="">Selecione...</option></select></div>
+      </div>
+      <div class="fr3">
+        <div class="fg"><label class="fl">Status</label>
+          <select id="implSt">
+            <option>Não iniciada</option><option>Em andamento</option><option>Migração</option>
+            <option>Homologando migração</option><option>Treinamento</option>
+            <option>Suspenso</option><option>Concluída</option><option>Cancelada</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Fase</label>
+          <select id="implFa">
+            <option>Apresentação</option><option>Levantamento</option><option>Configuração</option>
+            <option>Treinamento</option><option>Homologação</option><option>Migração</option>
+            <option>Homologando migração</option><option>Go Live</option><option>Concluída</option><option>Suspenso</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Data Conclusão</label><input type="date" id="implDt"></div>
+      </div>
+      <div class="stl">📦 Sistemas Vinculados</div>
+      <div class="sg" id="implSg"></div>
+      <div class="fr2">
+        <div class="fg">
+          <label class="fl">✅ Sistemas Migrados</label>
+          <div id="implMigGrid" style="display:flex;flex-wrap:wrap;gap:5px;min-height:32px;padding:6px;border:1.5px solid var(--border);border-radius:var(--ra);background:var(--surface);"></div>
+          <div style="font-size:10px;color:var(--tx3);margin-top:2px;">Clique nos sistemas já migrados</div>
+        </div>
+        <div class="fg">
+          <label class="fl">🚫 Sem Uso 2026</label>
+          <div id="implSemGrid" style="display:flex;flex-wrap:wrap;gap:5px;min-height:32px;padding:6px;border:1.5px solid var(--border);border-radius:var(--ra);background:var(--surface);"></div>
+          <div style="font-size:10px;color:var(--tx3);margin-top:2px;">Clique nos sistemas sem uso em 2026</div>
+        </div>
+      </div>
+      <div class="stl">📝 Observações Gerais</div>
+      <textarea id="implObs" rows="3" placeholder="Observações gerais sobre esta implantação (secretário, contatos, particularidades do município)..."></textarea>
+      <div style="margin-top:8px;padding:10px 12px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:var(--ra);font-size:11px;color:#4338CA;">
+        💡 <strong>Dica:</strong> Para registrar o andamento diário, feche este modal e clique na implantação para abrir o <strong>📅 Diário de Bordo</strong>.
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-o" onclick="closeM('mImpl')">Cancelar</button>
+      <button class="btn btn-p" onclick="salvarImpl()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ver Implantação -->
+<div class="ov" id="mVer">
+  <div class="modal" style="max-width:860px;">
+    <div class="mhd">
+      <div><div class="mhd-t" id="mVerT">—</div><div class="mhd-s" id="mVerS">—</div></div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-p btn-sm" onclick="abrirEditImpl(lastVerId)">✏️ Editar</button>
+        <button class="xb" onclick="closeM('mVer')">✕</button>
+      </div>
+    </div>
+    <!-- Abas -->
+    <div style="display:flex;border-bottom:1px solid var(--border);background:var(--surf2);padding:0 20px;">
+      <button id="vtab-dados" onclick="switchVerAba('dados')" style="padding:10px 16px;font-size:12px;font-weight:700;border:none;background:none;border-bottom:2.5px solid var(--brand2);color:var(--brand2);cursor:pointer;font-family:inherit;">📋 Dados</button>
+      <button id="vtab-hist" onclick="switchVerAba('hist')" style="padding:10px 16px;font-size:12px;font-weight:700;border:none;background:none;border-bottom:2.5px solid transparent;color:var(--tx3);cursor:pointer;font-family:inherit;">📅 Diário de Bordo</button>
+    </div>
+    <div id="vtab-dados-pane" class="mbd" style="padding:18px 20px;"><div id="mVerB"></div></div>
+    <div id="vtab-hist-pane" style="display:none;padding:18px 20px;">
+      <!-- Input nova atualização -->
+      <!-- Input nova entrada do diário -->
+      <div style="background:linear-gradient(135deg,#EEF2FF,#F5F3FF);border:1.5px solid #C7D2FE;border-radius:var(--rb);padding:14px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div style="font-size:18px;">📝</div>
+          <div>
+            <div style="font-size:12px;font-weight:800;color:var(--brand2);">Registrar entrada do diário</div>
+            <div style="font-size:10px;color:var(--tx3);">${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}</div>
+          </div>
+        </div>
+        <textarea id="histInput" rows="4" placeholder="O que aconteceu hoje? Ex:&#10;- Realizado treinamento do módulo Contabilidade com 3 usuários&#10;- Migração do PAT concluída&#10;- Pendente: aguardando senha do servidor para iniciar integração&#10;- Próximo contato agendado para 05/07" style="margin-bottom:10px;border-color:#C7D2FE;"></textarea>
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn btn-p btn-sm" onclick="salvarHistorico()" style="background:var(--brand2);">✍️ Registrar no diário</button>
+        </div>
+      </div>
+      <!-- Entradas do diário -->
+      <div id="histLista"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════
+let CFG_URL = localStorage.getItem('ig3_url')||'https://cuavkffoaojhergchjqx.supabase.co';
+let CFG_KEY = localStorage.getItem('ig3_key')||'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1YXZrZmZvYW9qaGVyZ2NoanF4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5NDUxNTIsImV4cCI6MjA5ODUyMTE1Mn0.DQ53fdgBOzriRKOtRgpwNGiw1kr-Dk8ZWhPYtiqCZNo';
+let _sb = null;
+function isSb(){return CFG_URL&&CFG_URL!=='SUA_URL';}
+function getSb(){if(!_sb&&isSb()){try{_sb=supabase.createClient(CFG_URL,CFG_KEY);}catch(e){}}return _sb;}
+
+// ══════════════════════════════════════════════════════════════
+// ESTADO
+// ══════════════════════════════════════════════════════════════
+let municipios=[], tecnicos=[], sistemas=[], implantacoes=[];
+let curPage='dash', editingId=null, lastVerId=null;
+let sortCol='municipio_nome', sortDir=1;
+
+// ══════════════════════════════════════════════════════════════
+// LS HELPERS
+// ══════════════════════════════════════════════════════════════
+const LS = {
+  load: k => { try{return JSON.parse(localStorage.getItem('ig3_'+k)||'[]');}catch(e){return[];} },
+  save: (k,d) => { try{localStorage.setItem('ig3_'+k,JSON.stringify(d));}catch(e){} },
+  del: (k,id) => { LS.save(k, LS.load(k).filter(r=>r.id!==id)); }
+};
+
+// ══════════════════════════════════════════════════════════════
+// DB GENÉRICO
+// ══════════════════════════════════════════════════════════════
+async function dbGet(table) {
+  const sb=getSb();
+  if(sb){ const{data,error}=await sb.from(table).select('*').order('created_at',{ascending:true}); if(!error&&data)return data; }
+  return LS.load(table);
+}
+async function dbSet(table, row) {
+  const sb=getSb();
+  if(sb){
+    if(row.id&&!String(row.id).startsWith('_')){
+      await sb.from(table).update({...row,updated_at:new Date().toISOString()}).eq('id',row.id);
+    } else {
+      const{data}=await sb.from(table).insert([{...row,id:undefined,created_at:new Date().toISOString(),updated_at:new Date().toISOString()}]).select().single();
+      if(data) row.id=data.id;
+    }
+  }
+  const loc=LS.load(table);const i=loc.findIndex(r=>r.id===row.id);
+  if(i>-1)loc[i]=row;else loc.push(row);LS.save(table,loc);
+  return row;
+}
+async function dbDel(table, id) {
+  const sb=getSb();
+  if(sb&&!String(id).startsWith('_')) await sb.from(table).delete().eq('id',id);
+  LS.del(table,id);
+}
+function uid(){return'_'+Math.random().toString(36).slice(2)+Date.now();}
+
+// ══════════════════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════════════════
+const el = id => document.getElementById(id);
+function toast(m,d=3000){const t=el('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),d);}
+function openM(id){el(id).classList.add('open');}
+function closeM(id){el(id).classList.remove('open');editingId=null;}
+function fmtD(d){if(!d)return'—';try{return new Date(d+'T12:00').toLocaleDateString('pt-BR');}catch(e){return d;}}
+function psig(s){if(!s)return[];return s.split(/[,;\s\/]+/).map(x=>x.trim().toUpperCase()).filter(Boolean);}
+function stCls(s){const m={'Concluída':'bd-c','Em andamento':'bd-a','Suspenso':'bd-s','Não iniciada':'bd-n','Migração':'bd-m','Homologando migração':'bd-h','Cancelada':'bd-x','Treinamento':'bd-t'};return m[s]||'bd-n';}
+function isAtr(r){if(!r.data_conclusao||['Concluída','Cancelada'].includes(r.status))return false;return new Date(r.data_conclusao+'T12:00')<new Date();}
+function munLabel(m){return(m.prefixo?m.prefixo+' ':'')+m.nome+(m.uf?' — '+m.uf:'');}
+
+// ══════════════════════════════════════════════════════════════
+// NAVEGAÇÃO
+// ══════════════════════════════════════════════════════════════
+const PAGES = {
+  dash:   {title:'📊 Dashboard',    btn:''},
+  impl:   {title:'🚀 Implantações', btn:'+ Nova Implantação'},
+  espaco: {title:'🏠 Meu Espaço',   btn:''},
+  rel:    {title:'📄 Relatórios',   btn:''},
+  mun:    {title:'🏛️ Municípios',   btn:'+ Novo Município'},
+  tec:    {title:'👤 Técnicos',     btn:'+ Novo Técnico'},
+  sis:    {title:'📦 Sistemas',     btn:'+ Novo Sistema'},
+  cfg:    {title:'⚙️ Configurações', btn:''},
+};
+function go(page){
+  curPage=page;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('on'));
+  document.querySelectorAll('.nav-item').forEach(n=>{if(n.getAttribute('onclick')?.includes("'"+page+"'"))n.classList.add('on');});
+  el('pgTitle').textContent=PAGES[page]?.title||page;
+  const btnTxt=PAGES[page]?.btn;
+  const btnFn={impl:'abrirNovaImpl()',mun:'abrirMun()',tec:'abrirTec()',sis:'abrirSis()'};
+  if(btnTxt){el('tbBtn').innerHTML=`<button class="btn btn-p btn-sm" onclick="${btnFn[page]||''}">${btnTxt}</button>`;}
+  else el('tbBtn').innerHTML='';
+  const renders={dash:renderDash,impl:renderImpl,mun:renderMun,tec:renderTec,sis:renderSis,cfg:renderCfg,espaco:renderEspaco,rel:renderRel};
+  renders[page]?.();
+}
+
+// ══════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════
+function renderDash(){
+  const tot=implantacoes.length;
+  const ok=implantacoes.filter(r=>r.status==='Concluída').length;
+  const and_=implantacoes.filter(r=>['Em andamento','Migração','Homologando migração','Treinamento'].includes(r.status)).length;
+  const sus=implantacoes.filter(r=>r.status==='Suspenso').length;
+  const ni=implantacoes.filter(r=>r.status==='Não iniciada').length;
+  const canc=implantacoes.filter(r=>r.status==='Cancelada').length;
+  const atr=implantacoes.filter(r=>isAtr(r)).length;
+  const pct=tot>0?Math.round(ok/tot*100):0;
+
+  // Alertas
+  const alertas=[];
+  implantacoes.filter(r=>isAtr(r)).sort((a,b)=>new Date(a.data_conclusao)-new Date(b.data_conclusao)).forEach(r=>{
+    const m=municipios.find(x=>x.id===r.municipio_id);
+    const t=tecnicos.find(x=>x.id===r.tecnico_id);
+    const dias=Math.floor((new Date()-new Date(r.data_conclusao+'T12:00'))/86400000);
+    alertas.push({tipo:'err',ico:'⏰',t:`${munLabel(m||{nome:'?'})}`,s:`Atrasada ${dias} dia(s) · Fase: ${r.fase||'—'} · Téc: ${t?.nome||'—'}`});
+  });
+  implantacoes.filter(r=>r.status==='Suspenso').forEach(r=>{
+    const m=municipios.find(x=>x.id===r.municipio_id);
+    const t=tecnicos.find(x=>x.id===r.tecnico_id);
+    alertas.push({tipo:'warn',ico:'⏸️',t:`${munLabel(m||{nome:'?'})}`,s:`Suspensa · Fase: ${r.fase||'—'} · Téc: ${t?.nome||'—'}`});
+  });
+  implantacoes.filter(r=>r.status==='Não iniciada').forEach(r=>{
+    const m=municipios.find(x=>x.id===r.municipio_id);
+    const t=tecnicos.find(x=>x.id===r.tecnico_id);
+    const dias=r.created_at?Math.floor((Date.now()-new Date(r.created_at))/86400000):0;
+    if(dias>30)alertas.push({tipo:'warn',ico:'💤',t:`${munLabel(m||{nome:'?'})}`,s:`Sem início há ${dias} dias · Téc: ${t?.nome||'—'}`});
+  });
+
+  // Carga por técnico
+  const cargaTec={};
+  implantacoes.filter(r=>!['Concluída','Cancelada'].includes(r.status)).forEach(r=>{
+    if(r.tecnico_id)cargaTec[r.tecnico_id]=(cargaTec[r.tecnico_id]||0)+1;
+  });
+
+  // Sistemas mais usados
+  const sisCount={};
+  implantacoes.forEach(r=>psig(r.sistemas_str).forEach(s=>{sisCount[s]=(sisCount[s]||0)+1;}));
+  const topSis=Object.entries(sisCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+
+  // Fases
+  const faseCount={};
+  implantacoes.filter(r=>!['Concluída','Cancelada'].includes(r.status)).forEach(r=>{
+    const f=r.fase||'Não definida';faseCount[f]=(faseCount[f]||0)+1;
+  });
+
+  // Donut SVG
+  function donutSvg(data, total){
+    if(total===0) return '<svg width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="46" fill="none" stroke="#EDE9FE" stroke-width="16"/><text x="60" y="65" text-anchor="middle" font-size="20" font-weight="800" fill="#1E1B4B">0</text></svg>';
+    const R=46, C=2*Math.PI*R;
+    let offset=0;
+    const segs=data.map(d=>{
+      const pct=d.n/total;
+      const seg=`<circle cx="60" cy="60" r="${R}" fill="none" stroke="${d.c}" stroke-width="16" stroke-dasharray="${C*pct} ${C*(1-pct)}" stroke-dashoffset="${-offset*C}" transform="rotate(-90 60 60)" stroke-linecap="butt"/>`;
+      offset+=pct; return seg;
+    }).join('');
+    return `<svg width="120" height="120" viewBox="0 0 120 120">${segs}<text x="60" y="58" text-anchor="middle" font-size="22" font-weight="800" fill="#1E1B4B">${total}</text><text x="60" y="73" text-anchor="middle" font-size="10" fill="#9CA3AF">total</text></svg>`;
+  }
+
+  const donutData=[
+    {l:'Em andamento',n:and_,c:'#2563EB'},
+    {l:'Concluídas',n:ok,c:'#059669'},
+    {l:'Não iniciadas',n:ni,c:'#9CA3AF'},
+    {l:'Suspensas',n:sus,c:'#D97706'},
+    {l:'Canceladas',n:canc,c:'#EF4444'},
+  ].filter(x=>x.n>0);
+
+  // Últimas implantações
+  const recentes=[...implantacoes].sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0)).slice(0,5);
+
+  el('content').innerHTML=`
+  <div class="kgrid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));">
+    <div class="kcard kc-tot" style="cursor:pointer;" onclick="go('impl')"><div class="kn">${tot}</div><div class="kl">Total</div></div>
+    <div class="kcard kc-and" style="cursor:pointer;" onclick="go('impl')"><div class="kn">${and_}</div><div class="kl">Em andamento</div></div>
+    <div class="kcard kc-ok" style="cursor:pointer;" onclick="go('impl')"><div class="kn">${ok}</div><div class="kl">Concluídas</div><div style="font-size:10px;color:var(--ok);font-weight:700;margin-top:2px;">${pct}%</div></div>
+    <div class="kcard kc-atr" style="cursor:pointer;" onclick="go('impl')"><div class="kn">${atr}</div><div class="kl">Atrasadas</div></div>
+    <div class="kcard kc-sus" style="cursor:pointer;" onclick="go('impl')"><div class="kn">${sus}</div><div class="kl">Suspensas</div></div>
+    <div class="kcard kc-ni" style="cursor:pointer;" onclick="go('impl')"><div class="kn">${ni}</div><div class="kl">Não iniciadas</div></div>
+  </div>
+
+  <!-- LINHA 1: Donut status + Alertas -->
+  <div class="grid2" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="card-title">📊 Distribuição por Status</div>
+      <div style="display:flex;align-items:center;gap:20px;">
+        <div style="flex-shrink:0;">${donutSvg(donutData,tot)}</div>
+        <div style="flex:1;">
+          ${donutData.map(d=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:${d.c};flex-shrink:0;"></div>
+              <div style="font-size:11px;flex:1;">${d.l}</div>
+              <div style="font-weight:800;font-size:12px;">${d.n}</div>
+              <div style="width:50px;"><div class="pb"><div class="pb-fill" style="width:${tot>0?Math.round(d.n/tot*100):0}%;background:${d.c};"></div></div></div>
+              <div style="font-size:10px;color:var(--tx3);width:30px;text-align:right;">${tot>0?Math.round(d.n/tot*100):0}%</div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⚠️ Alertas <span style="font-size:10px;background:${alertas.length>0?'var(--errbg)':'var(--okbg)'};color:${alertas.length>0?'var(--err)':'var(--ok)'};border-radius:20px;padding:1px 7px;margin-left:4px;font-weight:800;">${alertas.length}</span></div>
+      ${alertas.length===0?`<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 0;"><div style="font-size:28px;">✅</div><div style="font-size:12px;color:var(--ok);font-weight:700;">Tudo em dia!</div></div>`:''}
+      <div style="max-height:200px;overflow-y:auto;">
+        ${alertas.map(a=>`
+          <div class="alerta ${a.tipo}" style="cursor:pointer;" onclick="go('impl')">
+            <div class="alerta-ico">${a.ico}</div>
+            <div><div class="alerta-t">${a.t}</div><div class="alerta-s">${a.s}</div></div>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <!-- LINHA 2: Fases + Carga técnicos -->
+  <div class="grid2" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="card-title">🔄 Implantações por Fase (ativas)</div>
+      ${Object.keys(faseCount).length===0?`<div class="empty"><div class="ei">🔄</div><div class="et">Sem dados</div></div>`:''}
+      ${Object.entries(faseCount).sort((a,b)=>b[1]-a[1]).map(([fase,qt])=>{
+        const maxF=Math.max(...Object.values(faseCount));
+        const pctF=Math.round(qt/maxF*100);
+        const cores={'Apresentação':'#8B5CF6','Levantamento':'#3B82F6','Configuração':'#F59E0B','Treinamento':'#F97316','Homologação':'#EC4899','Migração':'#7C3AED','Homologando migração':'#5B21B6','Go Live':'#059669','Suspenso':'#DC2626','Não definida':'#9CA3AF'};
+        const cor=cores[fase]||'#6B7280';
+        return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">
+          <div style="width:90px;font-size:10px;font-weight:700;color:${cor};flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${fase}</div>
+          <div style="flex:1;"><div class="pb"><div class="pb-fill" style="width:${pctF}%;background:${cor};"></div></div></div>
+          <div style="font-weight:800;font-size:12px;width:20px;text-align:right;">${qt}</div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="card">
+      <div class="card-title">👤 Carga por Técnico</div>
+      ${Object.keys(cargaTec).length===0?`<div class="empty"><div class="ei">👤</div><div class="et">Sem dados</div></div>`:''}
+      ${Object.entries(cargaTec).sort((a,b)=>b[1]-a[1]).map(([id,qt])=>{
+        const t=tecnicos.find(x=>x.id===id);
+        const maxT=Math.max(...Object.values(cargaTec));
+        const pctT=Math.round(qt/maxT*100);
+        const cor=pctT>80?'var(--err)':pctT>60?'var(--warn)':'var(--info)';
+        return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--brand-light);color:var(--brand2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">${(t?.nome||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>
+          <div style="flex:1;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+              <span style="font-size:11px;font-weight:700;">${t?.nome||'Desconhecido'}</span>
+              <span style="font-size:11px;font-weight:800;color:${cor};">${qt} impl.</span>
+            </div>
+            <div class="pb"><div class="pb-fill" style="width:${pctT}%;background:${cor};"></div></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+
+  <!-- GRÁFICO: Evolução por Fase -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title">📈 Distribuição por Fase (implantações ativas)</div>
+    ${(()=>{
+      const faseOrdem=['Apresentação','Levantamento','Configuração','Treinamento','Homologação','Migração','Homologando migração','Go Live','Suspenso'];
+      const cores={'Apresentação':'#8B5CF6','Levantamento':'#3B82F6','Configuração':'#F59E0B','Treinamento':'#F97316','Homologação':'#EC4899','Migração':'#7C3AED','Homologando migração':'#5B21B6','Go Live':'#059669','Suspenso':'#DC2626'};
+      const ativas=implantacoes.filter(r=>!['Concluída','Cancelada'].includes(r.status));
+      const dados=faseOrdem.map(f=>({l:f,v:ativas.filter(r=>r.fase===f).length,cor:cores[f]||'#6B7280'})).filter(d=>d.v>0);
+      if(dados.length===0) return '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:12px;">Nenhuma implantação ativa</div>';
+      return barChartSVG(dados, 860, 160);
+    })()}
+  </div>
+
+  <!-- GRÁFICO: Conclusões por mês -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title">📅 Conclusões por Mês (últimos 12 meses)</div>
+    ${(()=>{
+      const meses=[];
+      for(let i=11;i>=0;i--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);meses.push({key:d.toISOString().slice(0,7),l:d.toLocaleString('pt-BR',{month:'short'}).replace('.','')});}
+      const concl=implantacoes.filter(r=>r.status==='Concluída'&&r.data_conclusao);
+      const dados=meses.map(m=>({l:m.l,v:concl.filter(r=>r.data_conclusao?.startsWith(m.key)).length,cor:'#059669'}));
+      return lineChartSVG(dados,860,140,'#059669');
+    })()}
+  </div>
+
+  <!-- LINHA 3: Sistemas + Recentes -->
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">📦 Sistemas mais Implantados</div>
+      ${topSis.length===0?`<div class="empty"><div class="ei">📦</div><div class="et">Sem dados</div></div>`:''}
+      ${topSis.map(([sig,qt],i)=>{
+        const s=sistemas.find(x=>x.sigla===sig);
+        const maxS=topSis[0][1];
+        const pctS=Math.round(qt/maxS*100);
+        return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="width:14px;font-size:10px;font-weight:800;color:var(--tx3);">${i+1}</div>
+          <div style="width:34px;height:26px;border-radius:5px;background:${s?.cor||'#6B7280'}22;color:${s?.cor||'#6B7280'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;">${s?.icone||sig.slice(0,1)}</div>
+          <div style="flex:1;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+              <span style="font-size:11px;font-weight:700;">${sig} — ${s?.nome||'?'}</span>
+              <span style="font-size:11px;font-weight:800;">${qt}</span>
+            </div>
+            <div class="pb"><div class="pb-fill" style="width:${pctS}%;background:${s?.cor||'var(--brand2)'};"></div></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="card">
+      <div class="card-title">🕐 Atualizadas Recentemente</div>
+      ${recentes.length===0?`<div class="empty"><div class="ei">🕐</div><div class="et">Sem registros</div></div>`:''}
+      ${recentes.map(r=>{
+        const m=municipios.find(x=>x.id===r.municipio_id);
+        const t=tecnicos.find(x=>x.id===r.tecnico_id);
+        return`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="abrirVer('${r.id}')">
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:700;">${m?munLabel(m):'—'}</div>
+            <div style="font-size:10px;color:var(--tx3);margin-top:1px;">${t?.nome||'—'} · ${r.fase||'—'}</div>
+          </div>
+          <span class="bdg ${stCls(r.status)}">${r.status}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// IMPLANTAÇÕES
+// ══════════════════════════════════════════════════════════════
+function renderImpl(){
+  el('content').innerHTML=`
+    <div class="fbar">
+      <input type="text" id="busca" placeholder="🔍 Buscar município, técnico, observação..." oninput="renderImplTabela()" style="max-width:280px;">
+      <select id="fSt" onchange="renderImplTabela()"><option value="">Todos os status</option>
+        <option>Concluída</option><option>Em andamento</option><option>Não iniciada</option>
+        <option>Suspenso</option><option>Migração</option><option>Homologando migração</option>
+        <option>Treinamento</option><option>Cancelada</option>
+      </select>
+      <select id="fTc" onchange="renderImplTabela()"><option value="">Todos os técnicos</option>
+        ${tecnicos.map(t=>`<option value="${t.id}">${t.nome}</option>`).join('')}
+      </select>
+      <span id="cnt" style="font-size:11px;color:var(--tx3);margin-left:auto;"></span>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);overflow:hidden;">
+      <div id="implTbl"></div>
+    </div>`;
+  renderImplTabela();
+}
+
+function renderImplTabela(){
+  const busca=(el('busca')?.value||'').toLowerCase();
+  const fSt=el('fSt')?.value||'';
+  const fTc=el('fTc')?.value||'';
+  let lista=implantacoes.filter(r=>{
+    if(fSt&&r.status!==fSt)return false;
+    if(fTc&&r.tecnico_id!==fTc)return false;
+    if(busca){
+      const m=municipios.find(x=>x.id===r.municipio_id);
+      const t=tecnicos.find(x=>x.id===r.tecnico_id);
+      const h=[munLabel(m||{nome:''}),t?.nome||'',r.fase||'',r.status||'',r.obs||'',r.sistemas_str||''].join(' ').toLowerCase();
+      return h.includes(busca);
+    }
+    return true;
+  });
+  lista.sort((a,b)=>{
+    const ma=municipios.find(x=>x.id===a.municipio_id),mb=municipios.find(x=>x.id===b.municipio_id);
+    const va=munLabel(ma||{nome:''}), vb=munLabel(mb||{nome:''});
+    return va<vb?-1:va>vb?1:0;
+  });
+  const cnt=el('cnt');if(cnt)cnt.textContent=`${lista.length} de ${implantacoes.length} registros`;
+  if(lista.length===0){el('implTbl').innerHTML='<div class="empty"><div class="ei">🚀</div><div class="et">Nenhuma implantação</div><div class="es">Crie a primeira implantação</div></div>';return;}
+  el('implTbl').innerHTML=`<div class="tbl-wrap"><table>
+    <thead><tr>
+      <th style="min-width:180px;">Município</th>
+      <th style="min-width:90px;">Status</th>
+      <th style="min-width:140px;">Técnico</th>
+      <th style="min-width:150px;">Fase</th>
+      <th style="min-width:100px;">Conclusão</th>
+      <th style="min-width:200px;">Sistemas</th>
+      <th style="min-width:200px;">Último Registro / Obs.</th>
+      <th style="width:44px;"></th>
+    </tr></thead>
+    <tbody>
+    ${lista.map(r=>{
+      const mun=municipios.find(x=>x.id===r.municipio_id);
+      const tec=tecnicos.find(x=>x.id===r.tecnico_id);
+      const sa=psig(r.sistemas_str),ma=psig(r.migracao),xa=psig(r.sem_uso);
+      const chips=sa.map(s=>{const cls=xa.includes(s)?'sem':ma.includes(s)?'mig':'';return`<span class="sc ${cls}">${s}</span>`;}).join('');
+      const obsPrev=r.obs?r.obs.slice(0,65)+(r.obs.length>65?'…':''):'—';
+      return`<tr class="trow" onclick="abrirVer('${r.id}')">
+        <td><div style="font-weight:700;font-size:12px;">${mun?munLabel(mun):'—'}</div></td>
+        <td><span class="bdg ${stCls(r.status)}">${r.status||'Não iniciada'}</span></td>
+        <td><div style="font-size:11px;">${tec?.nome||'—'}</div></td>
+        <td><div style="font-size:11px;">${r.fase||'—'}</div></td>
+        <td><div style="font-size:11px;${isAtr(r)?'color:var(--err);font-weight:700;':''}">${fmtD(r.data_conclusao)}</div></td>
+        <td><div style="line-height:1.8;">${chips||'—'}</div></td>
+        <td><div style="font-size:11px;color:var(--tx3);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(()=>{const hist=LS.load('ig3_hist').filter(h=>h.implId===r.id).sort((a,b)=>new Date(b.dt)-new Date(a.dt));return hist.length>0?'📝 '+hist[0].texto.slice(0,55)+(hist[0].texto.length>55?'…':''):obsPrev;})()} </div></td>
+        <td><button class="btn btn-o btn-xs" onclick="event.stopPropagation();abrirEditImpl('${r.id}')" title="Editar">✏️</button></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+}
+
+function abrirNovaImpl(){
+  editingId=null;
+  el('implId').value='';el('implSt').value='Não iniciada';el('implFa').value='Apresentação';
+  el('implDt').value='';el('implObs').value='';
+  el('implMun').innerHTML='<option value="">Selecione...</option>'+municipios.sort((a,b)=>a.nome.localeCompare(b.nome)).map(m=>`<option value="${m.id}">${munLabel(m)}</option>`).join('');
+  el('implTec').innerHTML='<option value="">Selecione...</option>'+tecnicos.map(t=>`<option value="${t.id}">${t.nome}</option>`).join('');
+  el('mImplT').textContent='Nova Implantação';el('mImplS').textContent='';
+  el('implDelBtn').style.display='none';
+  renderSisGrid([]);
+  setTimeout(()=>renderMigSemGrids([],[],[]),50);
+  openM('mImpl');
+}
+
+function abrirEditImpl(id){
+  const r=implantacoes.find(x=>x.id===id);if(!r)return;
+  editingId=id;
+  el('implId').value=r.id;
+  el('implMun').innerHTML='<option value="">Selecione...</option>'+municipios.sort((a,b)=>a.nome.localeCompare(b.nome)).map(m=>`<option value="${m.id}">${munLabel(m)}</option>`).join('');
+  el('implTec').innerHTML='<option value="">Selecione...</option>'+tecnicos.map(t=>`<option value="${t.id}">${t.nome}</option>`).join('');
+  el('implMun').value=r.municipio_id||'';el('implTec').value=r.tecnico_id||'';
+  el('implSt').value=r.status||'Não iniciada';el('implFa').value=r.fase||'Apresentação';
+  el('implDt').value=r.data_conclusao||'';
+  el('implObs').value=r.obs||'';
+  const mun=municipios.find(x=>x.id===r.municipio_id);
+  el('mImplT').textContent=mun?munLabel(mun):'Editar';
+  el('mImplS').textContent=(r.status||'')+(r.tecnico_id?(' · '+tecnicos.find(x=>x.id===r.tecnico_id)?.nome||''):'');
+  el('implDelBtn').style.display='';
+  const _sisSel=psig(r.sistemas_str),_migSel=psig(r.migracao),_semSel=psig(r.sem_uso);
+  renderSisGrid(_sisSel);
+  setTimeout(()=>renderMigSemGrids(_sisSel,_migSel,_semSel),50);
+  openM('mImpl');
+}
+
+function renderMigSemGrids(sisSelecionados, migSelecionados, semSelecionados){
+  // Só mostra sistemas que estão vinculados à implantação
+  const base = sisSelecionados.length > 0 ? sisSelecionados : sistemas.map(s=>s.sigla);
+  ['Mig','Sem'].forEach(tipo => {
+    const grid = el('implMigGrid'.replace('Mig', tipo==='Mig'?'Mig':'Sem').replace('Grid','Grid'));
+    const sel = tipo==='Mig' ? migSelecionados : semSelecionados;
+    if(!grid) return;
+    const cor = tipo==='Mig' ? '#059669' : '#DC2626';
+    const bgOn = tipo==='Mig' ? '#ECFDF5' : '#FEF2F2';
+    const bdOn = tipo==='Mig' ? '#A7F3D0' : '#FECACA';
+    grid.innerHTML = base.map(sig => {
+      const on = sel.includes(sig);
+      const s = sistemas.find(x=>x.sigla===sig);
+      return `<div onclick="tgMigSem(this,'${tipo}')" data-sig="${sig}" style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid ${on?bdOn:'var(--border)'};background:${on?bgOn:'var(--surface2)'};color:${on?cor:'var(--tx3)'};">${sig}</div>`;
+    }).join('');
+  });
+}
+
+function tgMigSem(el, tipo){
+  const isOn = el.style.background !== 'var(--surface2)' && el.style.background !== '';
+  const cor = tipo==='Mig' ? '#059669' : '#DC2626';
+  const bgOn = tipo==='Mig' ? '#ECFDF5' : '#FEF2F2';
+  const bdOn = tipo==='Mig' ? '#A7F3D0' : '#FECACA';
+  if(isOn){
+    el.style.background='var(--surface2)';el.style.borderColor='var(--border)';el.style.color='var(--tx3)';
+  } else {
+    el.style.background=bgOn;el.style.borderColor=bdOn;el.style.color=cor;
+  }
+}
+
+function getMigSem(tipo){
+  const grid = el(tipo==='Mig'?'implMigGrid':'implSemGrid');
+  if(!grid) return '';
+  return [...grid.querySelectorAll('[data-sig]')]
+    .filter(d=>{const bg=d.style.background;return bg&&bg!=='var(--surface2)'&&bg!==''&&bg!=='rgb(243, 244, 246)';})
+    .map(d=>d.dataset.sig).join(', ');
+}
+
+function renderSisGrid(sel){
+  el('implSg').innerHTML=sistemas.sort((a,b)=>a.sigla.localeCompare(b.sigla)).map(s=>{
+    const on=sel.includes(s.sigla);
+    return`<div class="si${on?' on':''}" id="si_${s.sigla}" onclick="tgSis('${s.sigla}')">
+      <div class="ck${on?' on':''}" id="ck_${s.sigla}"></div>
+      <div class="dot" style="background:${s.cor||'#6B7280'};"></div>
+      <div class="sn">${s.sigla}<br><span>${s.nome}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function tgSis(sig){
+  el('ck_'+sig)?.classList.toggle('on');
+  el('si_'+sig)?.classList.toggle('on');
+  // Atualizar grids de migração e sem uso
+  const sisSel=[...document.querySelectorAll('.ck.on')].map(e=>e.id.replace('ck_',''));
+  const migAtual=getMigSem('Mig').split(', ').filter(Boolean);
+  const semAtual=getMigSem('Sem').split(', ').filter(Boolean);
+  renderMigSemGrids(sisSel,migAtual,semAtual);
+}
+
+async function salvarImpl(){
+  const munId=el('implMun').value;
+  if(!munId){toast('⚠️ Selecione o município');return;}
+  const sis=[...document.querySelectorAll('.ck.on')].map(e=>e.id.replace('ck_','')).join(', ');
+  const id=el('implId').value;
+  const row={id:id||uid(),municipio_id:munId,tecnico_id:el('implTec').value||null,status:el('implSt').value,fase:el('implFa').value,data_conclusao:el('implDt').value||null,sistemas_str:sis,migracao:getMigSem('Mig'),sem_uso:getMigSem('Sem'),obs:el('implObs').value.trim()};
+  await dbSet('ig3_impl',row);
+  const idx=implantacoes.findIndex(r=>r.id===row.id);
+  if(idx>-1)implantacoes[idx]=row;else implantacoes.push(row);
+  closeM('mImpl');atualizarBadge();
+  if(curPage==='impl')renderImplTabela();else if(curPage==='dash')renderDash();
+  toast(id?'✅ Salvo!':'✅ Cadastrado!');
+}
+
+async function excluirImpl(){
+  const id=el('implId').value;if(!id)return;
+  if(!confirm('Excluir este registro?'))return;
+  await dbDel('ig3_impl',id);
+  implantacoes=implantacoes.filter(r=>r.id!==id);
+  closeM('mImpl');atualizarBadge();
+  if(curPage==='impl')renderImplTabela();else if(curPage==='dash')renderDash();
+  toast('🗑 Excluído');
+}
+
+function abrirVer(id){
+  const r=implantacoes.find(x=>x.id===id);if(!r)return;
+  lastVerId=id;
+  const mun=municipios.find(x=>x.id===r.municipio_id);
+  const tec=tecnicos.find(x=>x.id===r.tecnico_id);
+  el('mVerT').textContent=mun?munLabel(mun):'—';
+  el('mVerS').innerHTML=`<span class="bdg ${stCls(r.status)}">${r.status}</span> &nbsp;·&nbsp; ${tec?.nome||'Sem técnico'} &nbsp;·&nbsp; ${r.fase||'—'}`;
+  const sa=psig(r.sistemas_str),ma=psig(r.migracao),xa=psig(r.sem_uso);
+  el('mVerB').innerHTML=`
+    <div class="fr3" style="margin-bottom:14px;">
+      <div><div class="fl">Técnico</div><div style="font-size:13px;">${tec?.nome||'—'}</div></div>
+      <div><div class="fl">Fase</div><div style="font-size:13px;">${r.fase||'—'}</div></div>
+      <div><div class="fl">Conclusão</div><div style="font-size:13px;${isAtr(r)?'color:var(--err);font-weight:700;':''}">${fmtD(r.data_conclusao)}</div></div>
+    </div>
+    ${sa.length>0?`
+      <div class="stl" style="margin-bottom:8px;">📦 Sistemas</div>
+      <div style="margin-bottom:14px;">
+        ${sa.map(s=>{
+          const isMig=ma.includes(s),isSem=xa.includes(s),obj=sistemas.find(x=>x.sigla===s);
+          return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
+            <div style="width:7px;height:7px;border-radius:50%;background:${obj?.cor||'#6B7280'};flex-shrink:0;"></div>
+            <div style="font-weight:700;font-size:12px;flex:1;">${s} <span style="font-weight:400;color:var(--tx3);">${obj?.nome||''}</span></div>
+            ${isMig?'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#ECFDF5;color:#059669;border:1px solid #A7F3D0;">✅ Migrado</span>':isSem?'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;">🚫 Sem uso</span>':''}
+          </div>`;
+        }).join('')}
+      </div>`:''}
+    ${r.obs?`<div class="stl" style="margin-bottom:8px;">📝 Observações</div><div class="obs-box">${r.obs}</div>`:''}`;
+  openM('mVer');
+}
+
+// ══════════════════════════════════════════════════════════════
+// MUNICÍPIOS
+// ══════════════════════════════════════════════════════════════
+function renderMun(){
+  el('content').innerHTML=`
+    <div style="margin-bottom:14px;"><input type="text" id="buscaMun" placeholder="🔍 Buscar município..." oninput="renderMunLista()" style="max-width:280px;"></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);overflow:hidden;">
+      <div id="munTbl"></div>
+    </div>`;
+  renderMunLista();
+}
+function renderMunLista(){
+  const q=(el('buscaMun')?.value||'').toLowerCase();
+  let lista=municipios.filter(m=>[m.nome,m.uf,m.prefixo,m.contato].join(' ').toLowerCase().includes(q));
+  lista.sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(lista.length===0){el('munTbl').innerHTML='<div class="empty"><div class="ei">🏛️</div><div class="et">Nenhum município</div><div class="es">Cadastre o primeiro município</div></div>';return;}
+  el('munTbl').innerHTML=`<div class="tbl-wrap"><table>
+    <thead><tr><th>Município</th><th>UF</th><th>Contato</th><th>WhatsApp</th><th>Implantações</th><th style="width:44px;"></th></tr></thead>
+    <tbody>
+    ${lista.map(m=>{
+      const qt=implantacoes.filter(r=>r.municipio_id===m.id).length;
+      return`<tr class="trow">
+        <td><div style="font-weight:700;font-size:12px;">${munLabel(m)}</div></td>
+        <td>${m.uf||'—'}</td>
+        <td style="font-size:11px;">${m.contato||'—'}</td>
+        <td style="font-size:11px;">${m.whatsapp||'—'}</td>
+        <td><span style="font-weight:700;color:var(--brand2);">${qt}</span></td>
+        <td><button class="btn btn-o btn-xs" onclick="abrirMun('${m.id}')">✏️</button></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+}
+
+function abrirMun(id){
+  const m=id?municipios.find(x=>x.id===id):null;
+  editingId=id||null;
+  el('mMunT').textContent=m?'Editar Município':'Novo Município';
+  el('munId').value=m?.id||'';
+  el('munNome').value=m?.nome||'';
+  el('munIbge').value=m?.ibge||'';
+  el('munCont').value=m?.contato||'';
+  el('munWpp').value=m?.whatsapp||'';
+  el('munObs').value=m?.obs||'';
+  // UF select
+  const ufs=['BA','SP','MG','RJ','PR','SC','RS','GO','MT','MS','PA','MA','CE','PE','PB','AL','SE','PI','RN','TO','AM','RO','AC','RR','AP','DF','ES'];
+  el('munUf').innerHTML=ufs.map(u=>`<option${u===(m?.uf||'BA')?' selected':''}>${u}</option>`).join('');
+  el('munPfx').value=m?.prefixo||'PM';
+  openM('mMun');
+}
+
+async function salvarMun(){
+  const nome=el('munNome').value.trim();
+  if(!nome){toast('⚠️ Informe o nome');return;}
+  const id=el('munId').value;
+  const row={id:id||uid(),nome,uf:el('munUf').value,prefixo:el('munPfx').value,ibge:el('munIbge').value.trim(),contato:el('munCont').value.trim(),whatsapp:el('munWpp').value.trim(),obs:el('munObs').value.trim()};
+  await dbSet('ig3_mun',row);
+  const idx=municipios.findIndex(r=>r.id===row.id);
+  if(idx>-1)municipios[idx]=row;else municipios.push(row);
+  closeM('mMun');renderMunLista();toast(id?'✅ Salvo!':'✅ Município cadastrado!');
+}
+
+// ══════════════════════════════════════════════════════════════
+// TÉCNICOS
+// ══════════════════════════════════════════════════════════════
+function renderTec(){
+  el('content').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;" id="tecCards"></div>`;
+  renderTecCards();
+}
+function renderTecCards(){
+  if(tecnicos.length===0){el('tecCards').innerHTML='<div class="empty" style="grid-column:1/-1;"><div class="ei">👤</div><div class="et">Nenhum técnico</div><div class="es">Cadastre o primeiro técnico</div></div>';return;}
+  el('tecCards').innerHTML=tecnicos.map(t=>{
+    const qt=implantacoes.filter(r=>r.tecnico_id===t.id&&!['Concluída','Cancelada'].includes(r.status)).length;
+    return`<div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--brand-light);color:var(--brand2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;">${t.nome.slice(0,2).toUpperCase()}</div>
+        <div><div style="font-weight:800;font-size:13px;">${t.nome}</div><div style="font-size:10px;color:var(--tx3);">${t.cargo||'Técnico'}</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;">${t.email||''}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="bdg bd-a">${qt} impl. ativas</span>
+        <button class="btn btn-o btn-xs" onclick="abrirTec('${t.id}')">✏️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function abrirTec(id){
+  const t=id?tecnicos.find(x=>x.id===id):null;
+  editingId=id||null;
+  el('mTecT').textContent=t?'Editar Técnico':'Novo Técnico';
+  el('tecId').value=t?.id||'';el('tecNome').value=t?.nome||'';
+  el('tecEmail').value=t?.email||'';el('tecCargo').value=t?.cargo||'';
+  el('tecWpp').value=t?.whatsapp||'';el('tecObs').value=t?.obs||'';
+  openM('mTec');
+}
+
+async function salvarTec(){
+  const nome=el('tecNome').value.trim();
+  if(!nome){toast('⚠️ Informe o nome');return;}
+  const id=el('tecId').value;
+  const row={id:id||uid(),nome,email:el('tecEmail').value.trim(),cargo:el('tecCargo').value.trim(),whatsapp:el('tecWpp').value.trim(),obs:el('tecObs').value.trim()};
+  await dbSet('ig3_tec',row);
+  const idx=tecnicos.findIndex(r=>r.id===row.id);
+  if(idx>-1)tecnicos[idx]=row;else tecnicos.push(row);
+  closeM('mTec');renderTecCards();toast(id?'✅ Salvo!':'✅ Técnico cadastrado!');
+}
+
+// ══════════════════════════════════════════════════════════════
+// SISTEMAS
+// ══════════════════════════════════════════════════════════════
+const SIS_DEFAULT=[
+  {sigla:'ALM',nome:'Almoxarifado',cor:'#F59E0B',icone:'📦',tipo:'Obrigatório'},
+  {sigla:'COM',nome:'Compras',cor:'#3B82F6',icone:'🛒',tipo:'Obrigatório'},
+  {sigla:'CON',nome:'Contabilidade',cor:'#8B5CF6',icone:'📊',tipo:'Obrigatório'},
+  {sigla:'CTR',nome:'Contratos',cor:'#10B981',icone:'📝',tipo:'Obrigatório'},
+  {sigla:'FRO',nome:'Frotas',cor:'#F97316',icone:'🚗',tipo:'Opcional'},
+  {sigla:'LIC',nome:'Licitação',cor:'#EC4899',icone:'⚖️',tipo:'Obrigatório'},
+  {sigla:'LIS',nome:'Diário Oficial',cor:'#06B6D4',icone:'📰',tipo:'Opcional'},
+  {sigla:'OBR',nome:'Obras',cor:'#84CC16',icone:'🏗️',tipo:'Opcional'},
+  {sigla:'PAT',nome:'Patrimônio',cor:'#EF4444',icone:'🏢',tipo:'Obrigatório'},
+  {sigla:'PRO',nome:'Protocolo',cor:'#A78BFA',icone:'📬',tipo:'Opcional'},
+  {sigla:'RH', nome:'RH/Pessoal', cor:'#F43F5E',icone:'👥',tipo:'Obrigatório'},
+  {sigla:'FOL',nome:'Folha',      cor:'#0EA5E9',icone:'💰',tipo:'Obrigatório'},
+  {sigla:'TRI',nome:'Tributos',   cor:'#D97706',icone:'🏦',tipo:'Opcional'},
+  {sigla:'POR',nome:'Portal',     cor:'#7C3AED',icone:'🌐',tipo:'Opcional'},
+];
+
+function renderSis(){
+  el('content').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;" id="sisCards"></div>`;
+  renderSisCards();
+}
+function renderSisCards(){
+  el('sisCards').innerHTML=sistemas.map(s=>`
+    <div class="card" style="border-left:3px solid ${s.cor||'#6B7280'};">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div style="width:36px;height:36px;border-radius:var(--ra);background:${s.cor||'#6B7280'}22;display:flex;align-items:center;justify-content:center;font-size:18px;">${s.icone||'📦'}</div>
+        <div><div style="font-weight:800;font-size:13px;">${s.nome}</div><div style="font-size:10px;font-weight:700;color:${s.cor||'#6B7280'};">${s.sigla}</div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="bdg ${s.tipo==='Obrigatório'?'bd-x':'bd-n'}" style="font-size:9px;">${s.tipo||'Opcional'}</span>
+        <button class="btn btn-o btn-xs" onclick="abrirSis('${s.id}')">✏️</button>
+      </div>
+    </div>`).join('')+
+    (sistemas.length===0?'<div class="empty" style="grid-column:1/-1;"><div class="ei">📦</div><div class="et">Nenhum sistema</div></div>':'');
+}
+
+function abrirSis(id){
+  const s=id?sistemas.find(x=>x.id===id):null;
+  editingId=id||null;
+  el('mSisT').textContent=s?'Editar Sistema':'Novo Sistema';
+  el('sisId').value=s?.id||'';el('sisNome').value=s?.nome||'';
+  el('sisSig').value=s?.sigla||'';el('sisIco').value=s?.icone||'';
+  el('sisCor').value=s?.cor||'#7C3AED';el('sisTipo').value=s?.tipo||'Opcional';
+  el('sisTmp').value=s?.tempo||30;
+  openM('mSis');
+}
+
+async function salvarSis(){
+  const nome=el('sisNome').value.trim(), sigla=el('sisSig').value.trim().toUpperCase();
+  if(!nome||!sigla){toast('⚠️ Preencha nome e sigla');return;}
+  const id=el('sisId').value;
+  const row={id:id||uid(),nome,sigla,icone:el('sisIco').value||'📦',cor:el('sisCor').value,tipo:el('sisTipo').value,tempo:parseInt(el('sisTmp').value)||30};
+  await dbSet('ig3_sis',row);
+  const idx=sistemas.findIndex(r=>r.id===row.id);
+  if(idx>-1)sistemas[idx]=row;else sistemas.push(row);
+  closeM('mSis');renderSisCards();toast(id?'✅ Salvo!':'✅ Sistema cadastrado!');
+}
+
+// ══════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════
+function renderCfg(){
+  const curEmail=localStorage.getItem('ig3_usr_email')||'admin@implangest.com';
+  el('content').innerHTML=`
+    <div class="card" style="max-width:520px;margin-bottom:16px;">
+      <div class="card-title">🔐 Credenciais de Acesso</div>
+      <div class="fg"><label class="fl">E-mail de acesso</label><input type="email" id="cfgUsrEmail" value="${curEmail}" placeholder="admin@implangest.com"></div>
+      <div class="fg"><label class="fl">Nova senha</label><input type="password" id="cfgUsrSenha" placeholder="Deixe em branco para manter a atual"></div>
+      <div class="fg"><label class="fl">Confirmar nova senha</label><input type="password" id="cfgUsrSenha2" placeholder="Repita a nova senha"></div>
+      <button class="btn btn-p btn-sm" onclick="salvarCredenciais()" style="margin-bottom:4px;">🔐 Salvar credenciais</button>
+      <div style="font-size:10px;color:var(--tx3);margin-top:4px;">Senha padrão inicial: <strong>implangest2024</strong></div>
+    </div>
+    <div class="card" style="max-width:520px;margin-bottom:16px;">
+      <div class="card-title">🔌 Conexão Supabase</div>
+      <div class="fg"><label class="fl">URL do Projeto</label><input type="text" id="cfgU" value="${isSb()?CFG_URL:''}" placeholder="https://xxxx.supabase.co"></div>
+      <div class="fg"><label class="fl">Anon Key</label><input type="text" id="cfgK" placeholder="eyJhbGci..."></div>
+      <div id="cfgModo" style="font-size:12px;padding:8px 10px;border-radius:var(--ra);background:var(--surf2);border:1px solid var(--border);margin-bottom:12px;">
+        ${isSb()?'<span style="color:var(--ok);font-weight:700;">✅ Conectado ao Supabase</span>':'<span style="color:var(--warn);font-weight:700;">⚠️ Modo local (navegador)</span>'}
+      </div>
+      <button class="btn btn-p" onclick="salvarCfg()">💾 Salvar e Recarregar</button>
+    </div>
+    <div class="card" style="max-width:520px;">
+      <div class="card-title">🗃️ SQL para criar tabelas no Supabase</div>
+      <pre style="background:var(--surf2);border-radius:var(--ra);padding:12px;font-size:10px;border:1px solid var(--border);overflow-x:auto;line-height:1.7;max-height:300px;overflow-y:auto;white-space:pre-wrap;">${getSql()}</pre>
+    </div>`;
+}
+function getSql(){return`-- Execute no SQL Editor do Supabase
+CREATE TABLE ig3_mun (id text PRIMARY KEY, nome text NOT NULL, uf text, prefixo text, ibge text, contato text, whatsapp text, obs text, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now());
+CREATE TABLE ig3_tec (id text PRIMARY KEY, nome text NOT NULL, email text, cargo text, whatsapp text, obs text, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now());
+CREATE TABLE ig3_sis (id text PRIMARY KEY, nome text NOT NULL, sigla text NOT NULL, icone text, cor text, tipo text, tempo int DEFAULT 30, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now());
+CREATE TABLE ig3_impl (id text PRIMARY KEY, municipio_id text, tecnico_id text, status text DEFAULT 'Não iniciada', fase text DEFAULT 'Apresentação', data_conclusao date, sistemas_str text, migracao text, sem_uso text, obs text, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now());`;}
+function salvarCredenciais(){
+  const email=el('cfgUsrEmail')?.value.trim().toLowerCase();
+  const s1=el('cfgUsrSenha')?.value;
+  const s2=el('cfgUsrSenha2')?.value;
+  if(!email){toast('⚠️ Informe o e-mail');return;}
+  if(s1&&s1!==s2){toast('⚠️ As senhas não coincidem');return;}
+  localStorage.setItem('ig3_usr_email',email);
+  if(s1)localStorage.setItem('ig3_usr_senha',s1);
+  toast('✅ Credenciais atualizadas!');
+  renderCfg();
+}
+
+function salvarCfg(){
+  const u=el('cfgU')?.value.trim(),k=el('cfgK')?.value.trim();
+  if(u)localStorage.setItem('ig3_url',u);if(k)localStorage.setItem('ig3_key',k);
+  toast('✅ Salvo! Recarregando...');setTimeout(()=>location.reload(),1500);
+}
+
+// ══════════════════════════════════════════════════════════════
+// BADGE ATRASADOS
+// ══════════════════════════════════════════════════════════════
+function atualizarBadge(){
+  const n=implantacoes.filter(r=>isAtr(r)).length;
+  const b=el('nbAtr');if(b){b.textContent=n;b.style.display=n>0?'':'none';}
+}
+
+// ══════════════════════════════════════════════════════════════
+// FECHAR ESC / CLICK FORA
+// ══════════════════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.ov.open').forEach(o=>o.classList.remove('open'));});
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+
+
+// ══════════════════════════════════════════════════════════════
+// ABAS DO MODAL VER
+// ══════════════════════════════════════════════════════════════
+function switchVerTab(btn, paneId){
+  document.querySelectorAll('.ver-tab').forEach(b=>{
+    b.style.borderBottomColor='transparent';
+    b.style.color='var(--tx3)';
+    b.classList.remove('on');
+  });
+  if(btn){ btn.style.borderBottomColor='var(--brand2)'; btn.style.color='var(--brand2)'; btn.classList.add('on'); }
+  document.querySelectorAll('.ver-pane').forEach(p=>p.style.display='none');
+  const pane=el(paneId); if(pane) pane.style.display='block';
+}
+
+// ══════════════════════════════════════════════════════════════
+// ANOTAÇÕES
+// ══════════════════════════════════════════════════════════════
+function getAnotacoes(implId){ return LS.load('ig3_anot').filter(a=>a.implId===implId).sort((a,b)=>new Date(b.dt)-new Date(a.dt)); }
+
+function renderAnotacoes(implId){
+  const lista=getAnotacoes(implId);
+  const div=el('anotList'); if(!div) return;
+  if(lista.length===0){
+    div.innerHTML='<div style="text-align:center;padding:20px;color:var(--tx3);font-size:12px;">Nenhuma anotação ainda. Registre observações, contatos, pendências...</div>';
+    return;
+  }
+  div.innerHTML=lista.map(a=>`
+    <div style="background:var(--warnbg);border:1px solid var(--warnb);border-radius:var(--ra);padding:10px 12px;margin-bottom:8px;position:relative;">
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:4px;">${new Date(a.dt).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:12px;line-height:1.6;white-space:pre-wrap;">${a.texto}</div>
+      <button onclick="excluirAnotacao('${a.id}','${implId}')" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--tx4);font-size:13px;cursor:pointer;padding:2px 5px;border-radius:4px;" title="Excluir">✕</button>
+    </div>`).join('');
+}
+
+async function salvarAnotacao(){
+  const implId=lastVerId; if(!implId) return;
+  const txt=el('anotInput')?.value.trim(); if(!txt){toast('⚠️ Escreva algo');return;}
+  const anot={id:uid(),implId,texto:txt,dt:new Date().toISOString()};
+  const all=LS.load('ig3_anot'); all.push(anot); LS.save('ig3_anot',all);
+  el('anotInput').value='';
+  renderAnotacoes(implId);
+  toast('✅ Anotação registrada!');
+}
+
+function excluirAnotacao(anotId, implId){
+  if(!confirm('Excluir esta anotação?')) return;
+  LS.save('ig3_anot', LS.load('ig3_anot').filter(a=>a.id!==anotId));
+  renderAnotacoes(implId);
+}
+
+// ══════════════════════════════════════════════════════════════
+// AGENDA
+// ══════════════════════════════════════════════════════════════
+function getAgenda(implId){ return LS.load('ig3_agenda').filter(a=>a.implId===implId).sort((a,b)=>new Date(a.dt)-new Date(b.dt)); }
+
+function renderAgenda(implId){
+  const lista=getAgenda(implId);
+  const div=el('ageList'); if(!div) return;
+  if(lista.length===0){
+    div.innerHTML='<div style="text-align:center;padding:20px;color:var(--tx3);font-size:12px;">Nenhum compromisso agendado.</div>';
+    return;
+  }
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  div.innerHTML=lista.map(a=>{
+    const dt=new Date(a.dt+'T00:00');
+    const passado=dt<hoje;
+    const hoje_=dt.getTime()===hoje.getTime();
+    let cor=passado?'var(--errbg)':'var(--infobg)';
+    let border=passado?'var(--errb)':'var(--infob)';
+    if(hoje_){cor='var(--okbg)';border='var(--okb)';}
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${cor};border:1px solid ${border};border-radius:var(--ra);margin-bottom:7px;">
+      <div style="flex-shrink:0;text-align:center;min-width:44px;">
+        <div style="font-size:16px;font-weight:800;color:${passado?'var(--err)':hoje_?'var(--ok)':'var(--info)'};">${a.dt.slice(8,10)}</div>
+        <div style="font-size:9px;font-weight:700;color:var(--tx3);">${['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'][parseInt(a.dt.slice(5,7))-1]}</div>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:700;${passado?'text-decoration:line-through;color:var(--tx3);':''}">${a.titulo}</div>
+        ${a.hora?`<div style="font-size:10px;color:var(--tx3);">🕐 ${a.hora}</div>`:''}
+      </div>
+      ${passado?'<span style="font-size:10px;background:var(--errbg);color:var(--err);border-radius:20px;padding:1px 6px;font-weight:700;">Passado</span>':hoje_?'<span style="font-size:10px;background:var(--okbg);color:var(--ok);border-radius:20px;padding:1px 6px;font-weight:700;">Hoje!</span>':''}
+      <button onclick="excluirAgenda('${a.id}','${implId}')" style="background:none;border:none;color:var(--tx4);font-size:13px;cursor:pointer;padding:2px 5px;" title="Excluir">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function salvarAgenda(){
+  const implId=lastVerId; if(!implId) return;
+  const titulo=el('ageTitulo')?.value.trim();
+  const data=el('ageData')?.value;
+  if(!titulo||!data){toast('⚠️ Informe título e data');return;}
+  const evento={id:uid(),implId,titulo,dt:data,hora:el('ageHora')?.value||''};
+  const all=LS.load('ig3_agenda'); all.push(evento); LS.save('ig3_agenda',all);
+  el('ageTitulo').value=''; el('ageData').value=''; el('ageHora').value='';
+  renderAgenda(implId);
+  toast('✅ Compromisso adicionado!');
+}
+
+function excluirAgenda(evId, implId){
+  if(!confirm('Excluir este compromisso?')) return;
+  LS.save('ig3_agenda', LS.load('ig3_agenda').filter(a=>a.id!==evId));
+  renderAgenda(implId);
+}
+
+// ══════════════════════════════════════════════════════════════
+// ABAS DO MODAL VER + HISTÓRICO DIÁRIO
+// ══════════════════════════════════════════════════════════════
+function switchVerAba(aba){
+  // Botões
+  const btnDados = document.getElementById('vtab-dados');
+  const btnHist  = document.getElementById('vtab-hist');
+  const paneDados = document.getElementById('vtab-dados-pane');
+  const paneHist  = document.getElementById('vtab-hist-pane');
+  if(!btnDados || !btnHist) return;
+
+  if(aba === 'dados'){
+    btnDados.style.borderBottomColor='var(--brand2)'; btnDados.style.color='var(--brand2)';
+    btnHist.style.borderBottomColor='transparent';    btnHist.style.color='var(--tx3)';
+    if(paneDados) paneDados.style.display='';
+    if(paneHist)  paneHist.style.display='none';
+  } else {
+    btnHist.style.borderBottomColor='var(--brand2)';  btnHist.style.color='var(--brand2)';
+    btnDados.style.borderBottomColor='transparent';   btnDados.style.color='var(--tx3)';
+    if(paneHist)  paneHist.style.display='';
+    if(paneDados) paneDados.style.display='none';
+    renderHistoricoLista(lastVerId);
+  }
+}
+
+function getHistorico(implId){
+  return LS.load('ig3_hist').filter(h=>h.implId===implId)
+    .sort((a,b)=>new Date(b.dt)-new Date(a.dt));
+}
+
+function renderHistoricoLista(implId){
+  const lista = getHistorico(implId);
+  const div = document.getElementById('histLista');
+  if(!div) return;
+
+  if(lista.length === 0){
+    div.innerHTML = '<div class="empty"><div class="ei">📝</div><div class="et">Diário vazio</div><div class="es">Use o campo acima para registrar o andamento de hoje</div></div>';
+    return;
+  }
+
+  // Agrupar por data
+  const grupos = {};
+  lista.forEach(h => {
+    const dia = h.dt.slice(0,10);
+    if(!grupos[dia]) grupos[dia] = [];
+    grupos[dia].push(h);
+  });
+
+  div.innerHTML = Object.entries(grupos).map(([dia, itens]) => {
+    const dtObj = new Date(dia+'T12:00');
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const isHoje = dtObj.getTime() === hoje.getTime();
+    const diasAtras = Math.floor((hoje - dtObj)/86400000);
+    const labelDia = isHoje ? 'Hoje' : diasAtras===1 ? 'Ontem' : dtObj.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'2-digit'});
+
+    return `<div style="margin-bottom:16px;">
+      <!-- Separador de data -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:${isHoje?'var(--ok)':'var(--brand2)'};color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;">${dia.slice(8,10)}</div>
+        <div>
+          <div style="font-size:12px;font-weight:800;color:${isHoje?'var(--ok)':'var(--brand2)'};text-transform:capitalize;">${labelDia}</div>
+          <div style="font-size:10px;color:var(--tx3);">${new Date(dia+'T12:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</div>
+        </div>
+        <div style="flex:1;height:1px;background:var(--border);"></div>
+      </div>
+      <!-- Registros do dia -->
+      ${itens.map(h => `
+        <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${isHoje?'var(--ok)':'var(--brand2)'};border-radius:var(--ra);padding:12px 14px;margin-bottom:6px;margin-left:18px;position:relative;">
+          <div style="font-size:12px;line-height:1.7;white-space:pre-wrap;color:var(--tx);">${h.texto}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+            <div style="font-size:10px;color:var(--tx3);">🕐 ${new Date(h.dt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+            <button onclick="excluirHistorico('${h.id}','${implId}')" style="background:none;border:none;color:var(--tx4);font-size:12px;cursor:pointer;" title="Excluir">✕</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+
+async function salvarHistorico(){
+  const implId = lastVerId; if(!implId){ toast('⚠️ Nenhuma implantação selecionada'); return; }
+  const txt = document.getElementById('histInput')?.value.trim();
+  if(!txt){ toast('⚠️ Escreva algo'); return; }
+
+  const h = { id: uid(), implId, texto: txt, dt: new Date().toISOString() };
+  const all = LS.load('ig3_hist'); all.push(h); LS.save('ig3_hist', all);
+
+  // Atualizar updated_at da implantação
+  const idx = implantacoes.findIndex(x=>x.id===implId);
+  if(idx>-1){ implantacoes[idx].updated_at=h.dt; await dbSet('ig3_impl', implantacoes[idx]); }
+
+  document.getElementById('histInput').value = '';
+  renderHistoricoLista(implId);
+  toast('✅ Atualização registrada!');
+}
+
+function excluirHistorico(histId, implId){
+  if(!confirm('Excluir este registro?')) return;
+  LS.save('ig3_hist', LS.load('ig3_hist').filter(h=>h.id!==histId));
+  renderHistoricoLista(implId);
+}
+
+// ══════════════════════════════════════════════════════════════
+// MEU ESPAÇO — Tarefas, Anotações e Agenda (estilo Nexus)
+// ══════════════════════════════════════════════════════════════
+let espacoAba = 'tarefas';
+let tarefaFiltro = 'todas';
+
+function renderEspaco(){
+  el('content').innerHTML=`
+    <div style="max-width:860px;">
+      <div style="margin-bottom:6px;">
+        <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;">MEU ESPAÇO</div>
+        <div style="font-size:12px;color:var(--tx3);">Minhas tarefas, anotações e agenda</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:16px 0;">
+        <button onclick="switchEspaco('tarefas')" style="padding:12px;border-radius:var(--rb);border:2px solid ${espacoAba==='tarefas'?'var(--brand2)':'var(--border)'};background:${espacoAba==='tarefas'?'var(--brand2)':'var(--surface)'};color:${espacoAba==='tarefas'?'#fff':'var(--tx3)'};font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;">✅ Tarefas</button>
+        <button onclick="switchEspaco('anot')" style="padding:12px;border-radius:var(--rb);border:2px solid ${espacoAba==='anot'?'var(--brand2)':'var(--border)'};background:${espacoAba==='anot'?'var(--brand2)':'var(--surface)'};color:${espacoAba==='anot'?'#fff':'var(--tx3)'};font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;">📋 Anotações</button>
+        <button onclick="switchEspaco('agenda')" style="padding:12px;border-radius:var(--rb);border:2px solid ${espacoAba==='agenda'?'var(--brand2)':'var(--border)'};background:${espacoAba==='agenda'?'var(--brand2)':'var(--surface)'};color:${espacoAba==='agenda'?'#fff':'var(--tx3)'};font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;">📅 Agenda</button>
+      </div>
+      <div id="espacoConteudo"></div>
+    </div>`;
+  renderEspacoConteudo();
+}
+
+function switchEspaco(aba){ espacoAba=aba; renderEspaco(); }
+function renderEspacoConteudo(){
+  if(espacoAba==='tarefas') renderEspacoTarefas();
+  else if(espacoAba==='anot') renderEspacoAnot();
+  else renderEspacoAgenda();
+}
+
+// ── TAREFAS ──────────────────────────────────────────────────
+function renderEspacoTarefas(){
+  const hoje = new Date().toISOString().slice(0,10);
+  let tarefas = LS.load('ig3_tarefas');
+  const total = tarefas.length;
+  const urgentes = tarefas.filter(t=>!t.feita&&t.prioridade==='Urgente').length;
+  const pendentes = tarefas.filter(t=>!t.feita).length;
+  const feitas = tarefas.filter(t=>t.feita).length;
+
+  if(tarefaFiltro==='hoje') tarefas=tarefas.filter(t=>t.prazo===hoje&&!t.feita);
+  else if(tarefaFiltro==='urgente') tarefas=tarefas.filter(t=>t.prioridade==='Urgente'&&!t.feita);
+  else if(tarefaFiltro==='pendente') tarefas=tarefas.filter(t=>!t.feita);
+  else if(tarefaFiltro==='feitas') tarefas=tarefas.filter(t=>t.feita);
+  tarefas.sort((a,b)=>{ if(a.feita!==b.feita) return a.feita?1:-1; return new Date(a.prazo||'9999')-new Date(b.prazo||'9999'); });
+
+  const filtros=[
+    {k:'todas',l:'Todas',n:total},
+    {k:'hoje',l:'Hoje',n:tarefas.filter(t=>t.prazo===hoje).length},
+    {k:'urgente',l:'🔴 Urgente',n:urgentes},
+    {k:'pendente',l:'⏳ Pendente',n:pendentes},
+    {k:'feitas',l:'✅ Feitas',n:feitas},
+  ];
+
+  el('espacoConteudo').innerHTML=`
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:800;color:var(--tx);text-transform:uppercase;letter-spacing:.6px;">MINHAS TAREFAS PESSOAIS</div>
+      <button class="btn btn-p btn-sm" onclick="abrirModalTarefa()">+ Nova Tarefa</button>
+    </div>
+    <!-- Filtros -->
+    <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
+      ${filtros.map(f=>`<button onclick="tarefaFiltro='${f.k}';renderEspacoTarefas()" style="padding:5px 14px;border-radius:20px;border:1.5px solid ${tarefaFiltro===f.k?'var(--brand2)':'var(--border)'};background:${tarefaFiltro===f.k?'var(--brand2)':'var(--surface)'};color:${tarefaFiltro===f.k?'#fff':'var(--tx2)'};font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">${f.l}</button>`).join('')}
+    </div>
+    <!-- Lista -->
+    <div id="tarefaLista">
+      ${tarefas.length===0?'<div class="empty"><div class="ei">✅</div><div class="et">Nenhuma tarefa aqui</div></div>':''}
+      ${tarefas.map(t=>{
+        const atrasada=!t.feita&&t.prazo&&t.prazo<hoje;
+        const mun=t.munId?municipios.find(x=>x.id===t.munId):null;
+        const priorCores={'Urgente':'#DC2626','Média':'#D97706','Normal':'#6B7280'};
+        const priorBg={'Urgente':'#FEF2F2','Média':'#FFFBEB','Normal':'#F3F4F6'};
+        return`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);padding:14px 16px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;${t.feita?'opacity:.55':''}">
+          <input type="checkbox" ${t.feita?'checked':''} onchange="toggleTarefa('${t.id}')" style="width:18px;height:18px;margin-top:1px;cursor:pointer;accent-color:var(--brand2);flex-shrink:0;">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;${t.feita?'text-decoration:line-through;color:var(--tx3);':''}">${t.nome}</div>
+            <div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;align-items:center;">
+              <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:${priorBg[t.prioridade]||'#F3F4F6'};color:${priorCores[t.prioridade]||'#6B7280'};">${t.prioridade||'Normal'}</span>
+              ${t.prazo?`<span style="font-size:10px;color:${atrasada?'var(--err)':'var(--tx3)'};">📅 ${fmtD(t.prazo)}</span>`:''}
+              ${mun?`<span style="font-size:10px;color:var(--tx3);">🏛️ ${mun.nome}</span>`:''}
+            </div>
+          </div>
+          <button onclick="excluirTarefa('${t.id}')" style="background:none;border:none;color:var(--tx4);font-size:14px;cursor:pointer;padding:2px;">🗑</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// Modal nova tarefa
+function abrirModalTarefa(){
+  const html=`<div class="ov open" id="mTarefa" onclick="if(event.target.id==='mTarefa')closeM('mTarefa')">
+    <div class="modal modal-sm">
+      <div class="mhd"><div class="mhd-t">Nova Tarefa</div><button class="xb" onclick="closeM('mTarefa')">✕</button></div>
+      <div class="mbd">
+        <div class="fg"><label class="fl">Tarefa *</label><input type="text" id="tNome" placeholder="O que precisa fazer?" autofocus></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Prazo</label><input type="date" id="tPrazo"></div>
+          <div class="fg"><label class="fl">Prioridade</label><select id="tPrior"><option value="Normal">Normal</option><option value="Urgente">🔴 Urgente</option><option value="Média">🟡 Média</option></select></div>
+        </div>
+        <div class="fg"><label class="fl">Município (opcional)</label><select id="tMun"><option value="">Nenhum</option>${municipios.sort((a,b)=>a.nome.localeCompare(b.nome)).map(m=>`<option value="${m.id}">${munLabel(m)}</option>`).join('')}</select></div>
+      </div>
+      <div class="mft"><button class="btn btn-o" onclick="closeM('mTarefa')">Cancelar</button><button class="btn btn-p" onclick="salvarTarefa()">+ Adicionar</button></div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  setTimeout(()=>el('tNome')?.focus(),50);
+}
+
+function salvarTarefa(){
+  const nome=el('tNome')?.value.trim(); if(!nome){toast('⚠️ Escreva a tarefa');return;}
+  const t={id:uid(),nome,prazo:el('tPrazo')?.value||'',prioridade:el('tPrior')?.value||'Normal',munId:el('tMun')?.value||'',feita:false,dt:new Date().toISOString()};
+  const all=LS.load('ig3_tarefas'); all.push(t); LS.save('ig3_tarefas',all);
+  closeM('mTarefa'); el('mTarefa')?.remove();
+  renderEspacoTarefas(); toast('✅ Tarefa adicionada!');
+}
+function toggleTarefa(id){ const all=LS.load('ig3_tarefas').map(t=>t.id===id?{...t,feita:!t.feita}:t); LS.save('ig3_tarefas',all); renderEspacoTarefas(); }
+function excluirTarefa(id){ if(!confirm('Excluir tarefa?'))return; LS.save('ig3_tarefas',LS.load('ig3_tarefas').filter(t=>t.id!==id)); renderEspacoTarefas(); }
+
+// ── ANOTAÇÕES ────────────────────────────────────────────────
+const ANOT_CORES=['#FCE4EC','#E3F2FD','#E8F5E9','#FFF8E1','#EDE7F6','#E0F7FA'];
+const ANOT_BORDAS=['#F48FB1','#90CAF9','#A5D6A7','#FFE082','#CE93D8','#80DEEA'];
+
+function renderEspacoAnot(){
+  const notas=LS.load('ig3_anot_g').sort((a,b)=>new Date(b.dt)-new Date(a.dt));
+  el('espacoConteudo').innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:800;color:var(--tx);text-transform:uppercase;letter-spacing:.6px;">MINHAS ANOTAÇÕES</div>
+      <button class="btn btn-p btn-sm" onclick="abrirModalNota()">+ Nova Nota</button>
+    </div>
+    <div id="notaLista">
+      ${notas.length===0?'<div class="empty"><div class="ei">📋</div><div class="et">Nenhuma anotação</div><div class="es">Clique em "+ Nova Nota" para criar</div></div>':''}
+      ${notas.map((a,i)=>{
+        const ci=i%6;
+        return`<div style="background:${ANOT_CORES[ci]};border:1px solid ${ANOT_BORDAS[ci]};border-left:4px solid ${ANOT_BORDAS[ci]};border-radius:var(--rb);padding:16px 18px;margin-bottom:12px;position:relative;">
+          ${a.titulo?`<div style="font-size:14px;font-weight:800;color:var(--tx);margin-bottom:8px;">${a.titulo}</div>`:''}
+          <div style="font-size:12px;line-height:1.7;color:var(--tx2);white-space:pre-wrap;">${a.texto}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+            ${a.categoria?`<span style="font-size:10px;font-weight:700;color:${ANOT_BORDAS[ci]};background:rgba(0,0,0,.05);padding:2px 8px;border-radius:20px;">🏷 ${a.categoria}</span>`:''}
+            <span style="font-size:10px;color:var(--tx3);">${new Date(a.dt).toLocaleDateString('pt-BR')}</span>
+          </div>
+          <div style="position:absolute;top:10px;right:10px;display:flex;gap:4px;">
+            <button onclick="editarNota('${a.id}')" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:13px;" title="Editar">✏️</button>
+            <button onclick="excluirNota('${a.id}')" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:13px;" title="Excluir">🗑</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function abrirModalNota(id){
+  const nota=id?LS.load('ig3_anot_g').find(x=>x.id===id):null;
+  const existing=el('mNota'); if(existing) existing.remove();
+  const html=`<div class="ov open" id="mNota" onclick="if(event.target.id==='mNota')closeM('mNota')">
+    <div class="modal modal-sm">
+      <div class="mhd"><div class="mhd-t">${nota?'Editar Nota':'Nova Nota'}</div><button class="xb" onclick="closeM('mNota');el('mNota')?.remove()">✕</button></div>
+      <div class="mbd">
+        <div class="fg"><label class="fl">Título (opcional)</label><input type="text" id="nTitulo" value="${nota?.titulo||''}" placeholder="Título da nota"></div>
+        <div class="fg"><label class="fl">Conteúdo *</label><textarea id="nTexto" rows="5" placeholder="Escreva sua anotação...">${nota?.texto||''}</textarea></div>
+        <div class="fg"><label class="fl">Categoria (opcional)</label><input type="text" id="nCat" value="${nota?.categoria||''}" placeholder="Ex: Planejamento, Reunião..."></div>
+        ${nota?`<input type="hidden" id="nEditId" value="${nota.id}">`:''}
+      </div>
+      <div class="mft"><button class="btn btn-o" onclick="closeM('mNota');el('mNota')?.remove()">Cancelar</button><button class="btn btn-p" onclick="salvarNota()">💾 Salvar</button></div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  setTimeout(()=>el('nTexto')?.focus(),50);
+}
+
+function salvarNota(){
+  const texto=el('nTexto')?.value.trim(); if(!texto){toast('⚠️ Escreva algo');return;}
+  const editId=el('nEditId')?.value;
+  const nota={id:editId||uid(),titulo:el('nTitulo')?.value.trim()||'',texto,categoria:el('nCat')?.value.trim()||'',dt:editId?(LS.load('ig3_anot_g').find(x=>x.id===editId)?.dt||new Date().toISOString()):new Date().toISOString()};
+  let all=LS.load('ig3_anot_g');
+  if(editId) all=all.map(x=>x.id===editId?nota:x); else all.push(nota);
+  LS.save('ig3_anot_g',all);
+  closeM('mNota'); el('mNota')?.remove();
+  renderEspacoAnot(); toast('✅ Nota salva!');
+}
+function editarNota(id){ abrirModalNota(id); }
+function excluirNota(id){ if(!confirm('Excluir nota?'))return; LS.save('ig3_anot_g',LS.load('ig3_anot_g').filter(a=>a.id!==id)); renderEspacoAnot(); }
+
+// ── AGENDA ───────────────────────────────────────────────────
+function renderEspacoAgenda(){
+  const eventos=LS.load('ig3_agenda_g').sort((a,b)=>new Date(a.dt+'T'+(a.hora||'00:00'))-new Date(b.dt+'T'+(b.hora||'00:00')));
+  el('espacoConteudo').innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:800;color:var(--tx);text-transform:uppercase;letter-spacing:.6px;">MINHA AGENDA</div>
+      <button class="btn btn-p btn-sm" onclick="abrirModalEvento()">+ Novo Evento</button>
+    </div>
+    <div id="eventosLista">
+      ${eventos.length===0?'<div class="empty"><div class="ei">📅</div><div class="et">Nenhum evento</div><div class="es">Adicione compromissos à sua agenda</div></div>':''}
+      ${renderEventosAgrupados(eventos)}
+    </div>`;
+}
+
+function renderEventosAgrupados(eventos){
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const meses=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  // Agrupar por data
+  const grupos={};
+  eventos.forEach(e=>{ if(!grupos[e.dt])grupos[e.dt]=[]; grupos[e.dt].push(e); });
+  return Object.entries(grupos).map(([dt,evs])=>{
+    const dtObj=new Date(dt+'T00:00');
+    const passado=dtObj<hoje, hojeFlag=dtObj.getTime()===hoje.getTime();
+    const corDia=passado?'var(--err)':hojeFlag?'var(--ok)':'var(--brand2)';
+    const bgDia=passado?'rgba(239,68,68,.06)':hojeFlag?'rgba(5,150,105,.06)':'rgba(91,33,182,.04)';
+    return`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);overflow:hidden;margin-bottom:12px;">
+      <!-- Cabeçalho do dia -->
+      <div style="background:${bgDia};padding:10px 16px;text-align:center;border-bottom:1px solid var(--border);">
+        <div style="font-size:22px;font-weight:800;color:${corDia};line-height:1;">${dt.slice(8,10)}</div>
+        <div style="font-size:10px;font-weight:700;color:${corDia};letter-spacing:.5px;">${meses[parseInt(dt.slice(5,7))-1]}</div>
+        ${hojeFlag?'<div style="font-size:9px;font-weight:800;color:var(--ok);margin-top:2px;">HOJE</div>':''}
+      </div>
+      <!-- Eventos do dia -->
+      ${evs.map(e=>{
+        const mun=e.munId?municipios.find(x=>x.id===e.munId):null;
+        return`<div style="padding:12px 16px;border-bottom:1px solid var(--surf2);display:flex;gap:10px;align-items:flex-start;">
+          <div style="flex:1;">
+            ${e.tipo?`<div style="font-size:9px;font-weight:800;color:var(--brand2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">${e.tipo}</div>`:''}
+            <div style="font-size:13px;font-weight:700;${passado?'text-decoration:line-through;color:var(--tx3);':''}">${e.titulo}</div>
+            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+              ${e.hora?`<span style="font-size:11px;color:${passado?'var(--err)':'var(--tx3)'};">🕐 ${e.hora}</span>`:''}
+              ${mun?`<span style="font-size:11px;color:var(--tx3);">🏛️ ${mun.nome}</span>`:''}
+              ${e.desc?`<span style="font-size:11px;color:var(--tx3);">${e.desc}</span>`:''}
+            </div>
+          </div>
+          <button onclick="excluirEvento('${e.id}')" style="background:none;border:none;color:var(--tx4);font-size:13px;cursor:pointer;">🗑</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+function abrirModalEvento(){
+  const existing=el('mEvento'); if(existing) existing.remove();
+  const html=`<div class="ov open" id="mEvento" onclick="if(event.target.id==='mEvento')closeM('mEvento')">
+    <div class="modal modal-sm">
+      <div class="mhd"><div class="mhd-t">Novo Evento</div><button class="xb" onclick="closeM('mEvento');el('mEvento')?.remove()">✕</button></div>
+      <div class="mbd">
+        <div class="fg"><label class="fl">Título *</label><input type="text" id="evTitulo" placeholder="Ex: Reunião com cliente"></div>
+        <div class="fg"><label class="fl">Tipo</label><input type="text" id="evTipo" placeholder="Ex: REUNIÃO, VISITA, TREINAMENTO..."></div>
+        <div class="fr2">
+          <div class="fg"><label class="fl">Data *</label><input type="date" id="evData"></div>
+          <div class="fg"><label class="fl">Hora</label><input type="time" id="evHora"></div>
+        </div>
+        <div class="fg"><label class="fl">Município (opcional)</label><select id="evMun"><option value="">Nenhum</option>${municipios.sort((a,b)=>a.nome.localeCompare(b.nome)).map(m=>`<option value="${m.id}">${munLabel(m)}</option>`).join('')}</select></div>
+        <div class="fg"><label class="fl">Descrição</label><input type="text" id="evDesc" placeholder="Detalhes..."></div>
+      </div>
+      <div class="mft"><button class="btn btn-o" onclick="closeM('mEvento');el('mEvento')?.remove()">Cancelar</button><button class="btn btn-p" onclick="salvarEvento()">📅 Adicionar</button></div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  setTimeout(()=>el('evTitulo')?.focus(),50);
+}
+
+function salvarEvento(){
+  const titulo=el('evTitulo')?.value.trim(), data=el('evData')?.value;
+  if(!titulo||!data){toast('⚠️ Título e data obrigatórios');return;}
+  const e={id:uid(),titulo,tipo:el('evTipo')?.value.trim().toUpperCase()||'',dt:data,hora:el('evHora')?.value||'',munId:el('evMun')?.value||'',desc:el('evDesc')?.value.trim()||''};
+  const all=LS.load('ig3_agenda_g'); all.push(e); LS.save('ig3_agenda_g',all);
+  closeM('mEvento'); el('mEvento')?.remove();
+  renderEspacoAgenda(); toast('✅ Evento adicionado!');
+}
+function excluirEvento(id){ if(!confirm('Excluir evento?'))return; LS.save('ig3_agenda_g',LS.load('ig3_agenda_g').filter(a=>a.id!==id)); renderEspacoAgenda(); }
+
+// ══════════════════════════════════════════════════════════════
+// GRÁFICO SVG — helper
+// ══════════════════════════════════════════════════════════════
+function barChartSVG(dados, largura=520, altura=180){
+  if(!dados || dados.length===0) return '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:12px;">Sem dados suficientes</div>';
+  const max = Math.max(...dados.map(d=>d.v), 1);
+  const barW = Math.floor((largura - 40) / dados.length) - 6;
+  const chartH = altura - 40;
+  const bars = dados.map((d, i) => {
+    const bh = Math.max(2, Math.round((d.v / max) * chartH));
+    const x = 20 + i * (barW + 6);
+    const y = chartH - bh + 10;
+    return `<g>
+      <rect x="${x}" y="${y}" width="${barW}" height="${bh}" rx="4" fill="${d.cor||'var(--brand2)'}" opacity=".85"/>
+      <text x="${x + barW/2}" y="${y - 4}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--tx2)">${d.v}</text>
+      <text x="${x + barW/2}" y="${altura - 4}" text-anchor="middle" font-size="9" fill="var(--tx3)">${d.l.slice(0,6)}</text>
+    </g>`;
+  }).join('');
+  return `<svg width="100%" viewBox="0 0 ${largura} ${altura}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible;">${bars}</svg>`;
+}
+
+function lineChartSVG(pontos, largura=520, altura=140, cor='var(--brand2)'){
+  if(!pontos || pontos.length < 2) return '<div style="text-align:center;padding:20px;color:var(--tx3);font-size:12px;">Dados insuficientes para gráfico de linha</div>';
+  const maxV = Math.max(...pontos.map(p=>p.v), 1);
+  const minV = 0;
+  const padL=30, padR=10, padT=16, padB=28;
+  const w=largura-padL-padR, h=altura-padT-padB;
+  const pts = pontos.map((p,i)=>({
+    x: padL + (i/(pontos.length-1))*w,
+    y: padT + h - ((p.v-minV)/(maxV-minV||1))*h,
+    v: p.v, l: p.l
+  }));
+  const path = pts.map((p,i)=>(i===0?`M${p.x},${p.y}`:`L${p.x},${p.y}`)).join(' ');
+  const area = `M${pts[0].x},${padT+h} ${pts.map(p=>`L${p.x},${p.y}`).join(' ')} L${pts[pts.length-1].x},${padT+h} Z`;
+  const dots = pts.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="4" fill="${cor}" stroke="#fff" stroke-width="2"/>
+    <text x="${p.x}" y="${p.y-8}" text-anchor="middle" font-size="9" font-weight="700" fill="var(--tx2)">${p.v}</text>`).join('');
+  const labels = pts.map(p=>`<text x="${p.x}" y="${altura-6}" text-anchor="middle" font-size="8" fill="var(--tx3)">${p.l}</text>`).join('');
+  return `<svg width="100%" viewBox="0 0 ${largura} ${altura}" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${cor}" stop-opacity=".25"/><stop offset="100%" stop-color="${cor}" stop-opacity=".02"/></linearGradient></defs>
+    <path d="${area}" fill="url(#lg)"/>
+    <path d="${path}" fill="none" stroke="${cor}" stroke-width="2.5" stroke-linejoin="round"/>
+    ${dots}${labels}
+  </svg>`;
+}
+
+// Patch renderDash to include charts - insert after existing renderDash content
+const _origRenderDash = renderDash;
+
+// ══════════════════════════════════════════════════════════════
+// RELATÓRIOS
+// ══════════════════════════════════════════════════════════════
+function renderRel(){
+  el('content').innerHTML=`
+    <div style="max-width:960px;">
+      <!-- Seletor de tipo de relatório -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px;">
+        ${[
+          {id:'mun',   ico:'🏛️', titulo:'Por Município',  desc:'Histórico completo de uma implantação'},
+          {id:'tec',   ico:'👤', titulo:'Por Técnico',    desc:'Todas as implantações de cada técnico'},
+          {id:'status',ico:'📊', titulo:'Status Geral',   desc:'Visão consolidada por fase e status'},
+          {id:'sis',   ico:'📦', titulo:'Por Sistema',    desc:'Quais municípios têm cada sistema'},
+          {id:'atr',   ico:'⚠️', titulo:'Atrasos',       desc:'Implantações com prazo vencido'},
+        ].map(r=>`
+          <div onclick="renderRelTipo('${r.id}')" style="background:var(--surface);border:2px solid var(--border);border-radius:var(--rb);padding:16px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--brand2)';this.style.background='var(--brand-light)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface)'">
+            <div style="font-size:24px;margin-bottom:8px;">${r.ico}</div>
+            <div style="font-size:13px;font-weight:800;color:var(--tx);margin-bottom:3px;">${r.titulo}</div>
+            <div style="font-size:11px;color:var(--tx3);">${r.desc}</div>
+          </div>`).join('')}
+      </div>
+      <div id="relConteudo">
+        <div class="empty"><div class="ei">📄</div><div class="et">Selecione um tipo de relatório</div><div class="es">Clique em um dos cartões acima</div></div>
+      </div>
+    </div>`;
+}
+
+let relTipoAtual = '';
+function renderRelTipo(tipo){
+  relTipoAtual = tipo;
+  const renders = {mun:renderRelFiltroMun, tec:renderRelTecnico, status:renderRelStatus, sis:renderRelSistemas, atr:renderRelAtrasos};
+  renders[tipo]?.();
+}
+
+// ── FILTRO MUNICÍPIO ──────────────────────────────────────────
+function renderRelFiltroMun(){
+  const munOrdenados=[...municipios].sort((a,b)=>a.nome.localeCompare(b.nome));
+  el('relConteudo').innerHTML=`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);padding:16px 20px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;"><label class="fl">🏛️ Selecionar Município</label>
+        <select id="relMunSel" onchange="renderRelMun(this.value)">
+          <option value="">— Selecione —</option>
+          ${munOrdenados.map(m=>`<option value="${m.id}">${munLabel(m)}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn btn-p btn-sm" onclick="imprimirRel()">🖨️ Imprimir</button>
+    </div>
+    <div id="relMunCorpo"><div class="empty"><div class="ei">🏛️</div><div class="et">Selecione um município</div></div></div>`;
+}
+
+
+function renderRelMun(munId){
+  if(!munId){el('relConteudo').innerHTML='<div class="empty"><div class="ei">📄</div><div class="et">Selecione um município</div></div>';return;}
+  const mun=municipios.find(x=>x.id===munId);
+  const impl=implantacoes.filter(x=>x.municipio_id===munId);
+  if(!mun){el('relConteudo').innerHTML='<div class="empty"><div class="ei">❌</div><div class="et">Município não encontrado</div></div>';return;}
+
+  const tec=impl[0]?tecnicos.find(x=>x.id===impl[0].tecnico_id):null;
+  const hoje=new Date();
+  const anotacoes=LS.load('ig3_anot_g'); // global - poderia filtrar por mun futuramente
+  const agenda=LS.load('ig3_agenda_g').filter(a=>a.munId===munId).sort((a,b)=>new Date(a.dt)-new Date(b.dt));
+
+  // Para cada implantação do município
+  const implHtml = impl.length===0
+    ? '<div style="color:var(--tx3);font-size:12px;padding:12px;">Nenhuma implantação cadastrada.</div>'
+    : impl.map(r=>{
+        const t=tecnicos.find(x=>x.id===r.tecnico_id);
+        const sa=psig(r.sistemas_str), ma=psig(r.migracao), xa=psig(r.sem_uso);
+        const totalSis=sa.length, migSis=ma.length, semSis=xa.length, ativoSis=totalSis-migSis-semSis;
+        const pctMig=totalSis>0?Math.round(migSis/totalSis*100):0;
+
+        // Gráfico de sistemas
+        const sisBarData=[
+          {l:'Ativos',v:Math.max(0,ativoSis),cor:'#2563EB'},
+          {l:'Migrados',v:migSis,cor:'#059669'},
+          {l:'Sem uso',v:semSis,cor:'#9CA3AF'},
+        ];
+
+        return`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);padding:18px 20px;margin-bottom:16px;">
+          <!-- Header implantação -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Implantação</div>
+              <span class="bdg ${stCls(r.status)}">${r.status}</span>
+              <span style="font-size:12px;color:var(--tx2);margin-left:8px;">Fase: <strong>${r.fase||'—'}</strong></span>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:11px;color:var(--tx3);">Técnico: <strong>${t?.nome||'—'}</strong></div>
+              <div style="font-size:11px;color:${isAtr(r)?'var(--err)':'var(--tx3)'};">Conclusão: <strong>${fmtD(r.data_conclusao)}</strong></div>
+            </div>
+          </div>
+
+          <!-- Sistemas -->
+          ${sa.length>0?`
+          <div style="margin-bottom:14px;">
+            <div style="font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">📦 Sistemas (${totalSis} total · ${migSis} migrados · ${pctMig}%)</div>
+            <div style="background:var(--surf2);border-radius:6px;height:8px;overflow:hidden;margin-bottom:10px;">
+              <div style="height:100%;width:${pctMig}%;background:var(--ok);border-radius:6px;transition:width .3s;"></div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;">
+              ${sa.map(s=>{
+                const isMig=ma.includes(s),isSem=xa.includes(s),obj=sistemas.find(x=>x.sigla===s);
+                const bg=isMig?'#ECFDF5':isSem?'#F3F4F6':'#EEF2FF';
+                const cor=isMig?'#059669':isSem?'#9CA3AF':'#4F46E5';
+                const bord=isMig?'#A7F3D0':isSem?'#E5E7EB':'#C7D2FE';
+                const tag=isMig?'✅':isSem?'—':'▶';
+                return`<div style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;background:${bg};border:1px solid ${bord};">
+                  <span style="font-size:10px;">${tag}</span>
+                  <span style="font-size:11px;font-weight:700;color:${cor};">${s}</span>
+                  <span style="font-size:10px;color:var(--tx3);">${obj?.nome||''}</span>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>`:''}
+
+          <!-- Observações -->
+          ${r.obs?`<div style="margin-bottom:0;">
+            <div style="font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">📝 Observações</div>
+            <div style="background:var(--warnbg);border:1px solid var(--warnb);border-radius:var(--ra);padding:10px 12px;font-size:12px;line-height:1.7;white-space:pre-wrap;">${r.obs}</div>
+          </div>`:''}
+        </div>`;
+      }).join('');
+
+  // Agenda do município
+  const agendaHtml = agenda.length===0
+    ? '<div style="color:var(--tx3);font-size:12px;padding:8px;">Nenhum compromisso agendado para este município.</div>'
+    : agenda.map(a=>{
+        const dt=new Date(a.dt+'T00:00');
+        const passado=dt<hoje;
+        const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        return`<div style="display:flex;gap:12px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);">
+          <div style="text-align:center;min-width:36px;flex-shrink:0;">
+            <div style="font-size:16px;font-weight:800;color:${passado?'var(--tx3)':'var(--brand2)'};">${a.dt.slice(8,10)}</div>
+            <div style="font-size:9px;color:var(--tx3);">${meses[parseInt(a.dt.slice(5,7))-1]}</div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;${passado?'text-decoration:line-through;color:var(--tx3);':''}">${a.titulo}</div>
+            ${a.hora?`<div style="font-size:10px;color:var(--tx3);">🕐 ${a.hora}</div>`:''}
+          </div>
+        </div>`;
+      }).join('');
+
+  const relCorpo=el('relMunCorpo')||el('relConteudo');
+  relCorpo.innerHTML=`
+    <div id="relImpressao">
+      <!-- Cabeçalho -->
+      <div style="background:linear-gradient(135deg,var(--brand),var(--brand2));border-radius:var(--rb);padding:20px 24px;color:#fff;margin-bottom:20px;">
+        <div style="font-size:11px;opacity:.7;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Relatório de Acompanhamento</div>
+        <div style="font-size:22px;font-weight:800;">${munLabel(mun)}</div>
+        <div style="font-size:12px;opacity:.8;margin-top:4px;">Gerado em ${hoje.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+
+      <!-- Dados do município -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);padding:16px 20px;margin-bottom:16px;">
+        <div style="font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">🏛️ Dados do Município</div>
+        <div class="fr3">
+          <div><div style="font-size:10px;color:var(--tx3);margin-bottom:2px;">UF</div><div style="font-size:13px;font-weight:700;">${mun.uf||'—'}</div></div>
+          <div><div style="font-size:10px;color:var(--tx3);margin-bottom:2px;">IBGE</div><div style="font-size:13px;font-weight:700;">${mun.ibge||'—'}</div></div>
+          <div><div style="font-size:10px;color:var(--tx3);margin-bottom:2px;">Contato</div><div style="font-size:13px;font-weight:700;">${mun.contato||'—'}</div></div>
+          <div><div style="font-size:10px;color:var(--tx3);margin-bottom:2px;">WhatsApp</div><div style="font-size:13px;font-weight:700;">${mun.whatsapp||'—'}</div></div>
+          <div><div style="font-size:10px;color:var(--tx3);margin-bottom:2px;">Técnico</div><div style="font-size:13px;font-weight:700;">${tec?.nome||'—'}</div></div>
+          <div><div style="font-size:10px;color:var(--tx3);margin-bottom:2px;">Implantações</div><div style="font-size:13px;font-weight:700;">${impl.length}</div></div>
+        </div>
+        ${mun.obs?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--tx2);">${mun.obs}</div>`:''}
+      </div>
+
+      <!-- Implantações -->
+      <div style="font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">🚀 Implantações (${impl.length})</div>
+      ${implHtml}
+
+      <!-- Histórico diário -->
+      ${(()=>{
+        const hist = impl.flatMap(r => LS.load('ig3_hist').filter(h=>h.implId===r.id))
+          .sort((a,b)=>new Date(b.dt)-new Date(a.dt));
+        if(hist.length===0) return '';
+        const grupos={};
+        hist.forEach(h=>{const d=h.dt.slice(0,10);if(!grupos[d])grupos[d]=[];grupos[d].push(h);});
+        const histHtml=Object.entries(grupos).slice(0,20).map(([dia,itens])=>`
+          <div style="margin-bottom:12px;">
+            <div style="font-size:10px;font-weight:800;color:var(--brand2);margin-bottom:5px;">
+              ${new Date(dia+'T12:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'2-digit'})}
+            </div>
+            ${itens.map(h=>`<div style="background:var(--surf2);border-left:3px solid var(--brand2);border-radius:0 var(--ra) var(--ra) 0;padding:8px 12px;margin-bottom:4px;font-size:12px;line-height:1.6;">${h.texto}</div>`).join('')}
+          </div>`).join('');
+        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);padding:16px 20px;margin-top:12px;">
+          <div style="font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">📅 Histórico Diário (${hist.length} registros)</div>
+          ${histHtml}
+        </div>`;
+      })()}
+
+      <!-- Agenda -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);padding:16px 20px;margin-top:12px;">
+        <div style="font-size:10px;font-weight:800;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">🗓️ Agenda do Município (${agenda.length} compromissos)</div>
+        ${agendaHtml}
+      </div>
+    </div>`;
+}
+
+// ── RELATÓRIO POR TÉCNICO ─────────────────────────────────────
+function renderRelTecnico(){
+  el('relConteudo').innerHTML=`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);padding:16px 20px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;"><label class="fl">👤 Selecionar Técnico</label>
+        <select id="relTecSel" onchange="gerarRelTecnico(this.value)">
+          <option value="">— Todos os técnicos —</option>
+          ${tecnicos.sort((a,b)=>a.nome.localeCompare(b.nome)).map(t=>`<option value="${t.id}">${t.nome}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn btn-p btn-sm" onclick="imprimirRel()">🖨️ Imprimir</button>
+    </div>
+    <div id="relTecCorpo"></div>`;
+  gerarRelTecnico('');
+}
+
+function gerarRelTecnico(tecId){
+  const lista = tecId
+    ? implantacoes.filter(r=>r.tecnico_id===tecId)
+    : implantacoes;
+  const tec = tecId ? tecnicos.find(x=>x.id===tecId) : null;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+  const statusCores={'Concluída':'#059669','Em andamento':'#2563EB','Não iniciada':'#9CA3AF','Suspenso':'#D97706','Migração':'#7C3AED','Homologando migração':'#5B21B6','Treinamento':'#F97316','Cancelada':'#DC2626'};
+
+  // Agrupar por técnico se "todos"
+  const grupos = {};
+  lista.forEach(r=>{
+    const key = r.tecnico_id||'sem_tec';
+    if(!grupos[key]) grupos[key]=[];
+    grupos[key].push(r);
+  });
+
+  const div = el('relTecCorpo'); if(!div) return;
+  div.innerHTML = `<div id="relImpressao">
+    ${tec?`<div style="background:linear-gradient(135deg,var(--brand),var(--brand2));border-radius:var(--rb);padding:16px 20px;color:#fff;margin-bottom:16px;">
+      <div style="font-size:10px;opacity:.7;text-transform:uppercase;letter-spacing:.8px;">Relatório por Técnico</div>
+      <div style="font-size:20px;font-weight:800;margin-top:2px;">👤 ${tec.nome}</div>
+      <div style="font-size:12px;opacity:.8;margin-top:2px;">${tec.cargo||''} ${tec.email?'· '+tec.email:''}</div>
+    </div>`:''}
+    ${Object.entries(grupos).map(([key,impls])=>{
+      const t=tecnicos.find(x=>x.id===key);
+      const concl=impls.filter(r=>r.status==='Concluída').length;
+      const atr=impls.filter(r=>isAtr(r)).length;
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);overflow:hidden;margin-bottom:16px;">
+        <div style="background:var(--surf2);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
+          <div style="font-size:13px;font-weight:800;">${t?t.nome:'Sem técnico'}</div>
+          <div style="display:flex;gap:8px;">
+            <span class="bdg bd-n">${impls.length} total</span>
+            <span class="bdg bd-c">${concl} concluídas</span>
+            ${atr>0?`<span class="bdg bd-x">${atr} atrasadas</span>`:''}
+          </div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr>
+            <th style="padding:8px 14px;font-size:10px;font-weight:800;color:var(--tx3);text-align:left;border-bottom:1px solid var(--border);">Município</th>
+            <th style="padding:8px 14px;font-size:10px;font-weight:800;color:var(--tx3);text-align:left;border-bottom:1px solid var(--border);">Status</th>
+            <th style="padding:8px 14px;font-size:10px;font-weight:800;color:var(--tx3);text-align:left;border-bottom:1px solid var(--border);">Fase</th>
+            <th style="padding:8px 14px;font-size:10px;font-weight:800;color:var(--tx3);text-align:left;border-bottom:1px solid var(--border);">Sistemas</th>
+            <th style="padding:8px 14px;font-size:10px;font-weight:800;color:var(--tx3);text-align:left;border-bottom:1px solid var(--border);">Conclusão</th>
+          </tr></thead>
+          <tbody>
+            ${impls.sort((a,b)=>{const ma=municipios.find(x=>x.id===a.municipio_id),mb=municipios.find(x=>x.id===b.municipio_id);return(ma?.nome||'').localeCompare(mb?.nome||'');}).map(r=>{
+              const m=municipios.find(x=>x.id===r.municipio_id);
+              const atrasada=isAtr(r);
+              const pct=psig(r.sistemas_str).length>0?Math.round(psig(r.migracao).length/psig(r.sistemas_str).length*100):0;
+              return`<tr style="${atrasada?'background:#FEF2F2':''}">
+                <td style="padding:10px 14px;border-bottom:1px solid var(--surf2);font-size:12px;font-weight:700;">${m?munLabel(m):'—'}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid var(--surf2);"><span class="bdg ${stCls(r.status)}">${r.status}</span></td>
+                <td style="padding:10px 14px;border-bottom:1px solid var(--surf2);font-size:11px;">${r.fase||'—'}</td>
+                <td style="padding:10px 14px;border-bottom:1px solid var(--surf2);">
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <div style="width:50px;height:5px;background:var(--surf3);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:var(--ok);border-radius:3px;"></div></div>
+                    <span style="font-size:10px;color:var(--tx3);">${psig(r.migracao).length}/${psig(r.sistemas_str).length} migr.</span>
+                  </div>
+                </td>
+                <td style="padding:10px 14px;border-bottom:1px solid var(--surf2);font-size:11px;${atrasada?'color:var(--err);font-weight:700;':''}">${fmtD(r.data_conclusao)}${atrasada?' ⚠️':''}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── RELATÓRIO STATUS GERAL ────────────────────────────────────
+function renderRelStatus(){
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const tot=implantacoes.length;
+  const statusList=['Não iniciada','Em andamento','Migração','Homologando migração','Treinamento','Homologação','Suspenso','Concluída','Cancelada'];
+  const faseList=['Apresentação','Levantamento','Configuração','Treinamento','Homologação','Migração','Homologando migração','Go Live','Concluída','Suspenso'];
+  const statusCores={'Concluída':'#059669','Em andamento':'#2563EB','Não iniciada':'#9CA3AF','Suspenso':'#D97706','Migração':'#7C3AED','Homologando migração':'#5B21B6','Treinamento':'#F97316','Cancelada':'#DC2626','Homologação':'#EC4899'};
+
+  const porStatus=statusList.map(s=>({s,n:implantacoes.filter(r=>r.status===s).length,cor:statusCores[s]||'#6B7280'})).filter(x=>x.n>0);
+  const porFase=faseList.map(f=>({f,n:implantacoes.filter(r=>r.fase===f).length,cor:statusCores[f]||'#6B7280'})).filter(x=>x.n>0);
+
+  // Progresso geral
+  const concl=implantacoes.filter(r=>r.status==='Concluída').length;
+  const atr=implantacoes.filter(r=>isAtr(r)).length;
+  const pct=tot>0?Math.round(concl/tot*100):0;
+
+  el('relConteudo').innerHTML=`<div id="relImpressao">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,var(--brand),var(--brand2));border-radius:var(--rb);padding:20px 24px;color:#fff;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div style="font-size:11px;opacity:.7;text-transform:uppercase;letter-spacing:.8px;">Relatório</div>
+        <div style="font-size:22px;font-weight:800;">📊 Status Geral das Implantações</div>
+        <div style="font-size:12px;opacity:.8;margin-top:2px;">Gerado em ${new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);" onclick="imprimirRel()">🖨️ Imprimir</button>
+    </div>
+
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;">
+      ${[
+        {l:'Total',v:tot,c:'var(--brand2)'},
+        {l:'Concluídas',v:concl,c:'#059669'},
+        {l:'Em andamento',v:implantacoes.filter(r=>['Em andamento','Migração','Homologando migração','Treinamento'].includes(r.status)).length,c:'#2563EB'},
+        {l:'Atrasadas',v:atr,c:'#DC2626'},
+        {l:'Suspensas',v:implantacoes.filter(r=>r.status==='Suspenso').length,c:'#D97706'},
+        {l:'Não iniciadas',v:implantacoes.filter(r=>r.status==='Não iniciada').length,c:'#9CA3AF'},
+      ].map(k=>`<div class="kcard" style="border-left:3px solid ${k.c};">
+        <div class="kn" style="color:${k.c};font-size:24px;">${k.v}</div>
+        <div class="kl">${k.l}</div>
+        <div style="height:3px;background:var(--surf3);border-radius:2px;margin-top:6px;overflow:hidden;"><div style="height:100%;width:${tot>0?Math.round(k.v/tot*100):0}%;background:${k.c};"></div></div>
+      </div>`).join('')}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+      <!-- Por Status -->
+      <div class="card">
+        <div class="card-title">Por Status</div>
+        ${porStatus.map(x=>`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <div style="width:10px;height:10px;border-radius:50%;background:${x.cor};flex-shrink:0;"></div>
+            <div style="font-size:12px;flex:1;">${x.s}</div>
+            <div style="font-weight:800;font-size:12px;">${x.n}</div>
+            <div style="width:80px;height:5px;background:var(--surf3);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${Math.round(x.n/tot*100)}%;background:${x.cor};border-radius:3px;"></div></div>
+            <div style="font-size:10px;color:var(--tx3);width:28px;text-align:right;">${Math.round(x.n/tot*100)}%</div>
+          </div>`).join('')}
+      </div>
+      <!-- Por Fase -->
+      <div class="card">
+        <div class="card-title">Por Fase (ativas)</div>
+        ${porFase.map(x=>`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <div style="font-size:12px;flex:1;color:${x.cor};font-weight:600;">${x.f}</div>
+            <div style="font-weight:800;font-size:12px;">${x.n}</div>
+            <div style="width:80px;height:5px;background:var(--surf3);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${Math.round(x.n/Math.max(...porFase.map(p=>p.n))*100)}%;background:${x.cor};border-radius:3px;"></div></div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Listagem detalhada -->
+    <div class="card" style="padding:0;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:800;">Todas as Implantações</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr>
+          <th>Município</th><th>Técnico</th><th>Status</th><th>Fase</th><th>Sistemas</th><th>Migração</th><th>Conclusão</th>
+        </tr></thead>
+        <tbody>
+          ${[...implantacoes].sort((a,b)=>{const ma=municipios.find(x=>x.id===a.municipio_id),mb=municipios.find(x=>x.id===b.municipio_id);return(ma?.nome||'').localeCompare(mb?.nome||'');}).map(r=>{
+            const m=municipios.find(x=>x.id===r.municipio_id);
+            const t=tecnicos.find(x=>x.id===r.tecnico_id);
+            const sa=psig(r.sistemas_str), ma2=psig(r.migracao);
+            const pct=sa.length>0?Math.round(ma2.length/sa.length*100):0;
+            return`<tr style="${isAtr(r)?'background:#FEF2F2':''}">
+              <td style="padding:9px 12px;border-bottom:1px solid var(--surf2);font-size:12px;font-weight:700;">${m?munLabel(m):'—'}</td>
+              <td style="padding:9px 12px;border-bottom:1px solid var(--surf2);font-size:11px;">${t?.nome||'—'}</td>
+              <td style="padding:9px 12px;border-bottom:1px solid var(--surf2);"><span class="bdg ${stCls(r.status)}">${r.status}</span></td>
+              <td style="padding:9px 12px;border-bottom:1px solid var(--surf2);font-size:11px;">${r.fase||'—'}</td>
+              <td style="padding:9px 12px;border-bottom:1px solid var(--surf2);font-size:11px;">${sa.map(s=>`<span class="sc">${s}</span>`).join('')}</td>
+              <td style="padding:9px 12px;border-bottom:1px solid var(--surf2);">
+                <div style="display:flex;align-items:center;gap:5px;">
+                  <div style="width:40px;height:5px;background:var(--surf3);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:var(--ok);"></div></div>
+                  <span style="font-size:10px;color:var(--tx3);">${pct}%</span>
+                </div>
+              </td>
+              <td style="padding:9px 12px;border-bottom:1px solid var(--surf2);font-size:11px;${isAtr(r)?'color:var(--err);font-weight:700;':''}">${fmtD(r.data_conclusao)}${isAtr(r)?' ⚠️':''}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>
+    </div>
+  </div>`;
+}
+
+// ── RELATÓRIO POR SISTEMA ─────────────────────────────────────
+function renderRelSistemas(){
+  el('relConteudo').innerHTML=`<div id="relImpressao">
+    <div style="background:linear-gradient(135deg,var(--brand),var(--brand2));border-radius:var(--rb);padding:20px 24px;color:#fff;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:11px;opacity:.7;text-transform:uppercase;letter-spacing:.8px;">Relatório</div>
+        <div style="font-size:22px;font-weight:800;">📦 Municípios por Sistema</div>
+        <div style="font-size:12px;opacity:.8;margin-top:2px;">Gerado em ${new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);" onclick="imprimirRel()">🖨️ Imprimir</button>
+    </div>
+    ${sistemas.sort((a,b)=>a.sigla.localeCompare(b.sigla)).map(s=>{
+      const implComSis = implantacoes.filter(r=>psig(r.sistemas_str).includes(s.sigla));
+      const migrados   = implComSis.filter(r=>psig(r.migracao).includes(s.sigla));
+      const semUso     = implComSis.filter(r=>psig(r.sem_uso).includes(s.sigla));
+      const ativos     = implComSis.filter(r=>!psig(r.migracao).includes(s.sigla)&&!psig(r.sem_uso).includes(s.sigla));
+      if(implComSis.length===0) return '';
+      return`<div class="card" style="margin-bottom:14px;border-left:4px solid ${s.cor||'var(--brand2)'};">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <div style="width:40px;height:40px;border-radius:var(--ra);background:${s.cor||'var(--brand2)'}22;display:flex;align-items:center;justify-content:center;font-size:20px;">${s.icone||'📦'}</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:800;">${s.nome} <span style="font-weight:400;color:var(--tx3);">(${s.sigla})</span></div>
+            <div style="display:flex;gap:8px;margin-top:4px;">
+              <span class="bdg bd-n">${implComSis.length} municípios</span>
+              <span class="bdg bd-c">${migrados.length} migrados</span>
+              <span class="bdg bd-a">${ativos.length} em implantação</span>
+              ${semUso.length>0?`<span class="bdg bd-n">${semUso.length} sem uso</span>`:''}
+            </div>
+          </div>
+          <!-- Mini barra de progresso -->
+          <div style="text-align:right;">
+            <div style="font-size:18px;font-weight:800;color:${s.cor||'var(--brand2)'};">${implComSis.length>0?Math.round(migrados.length/implComSis.length*100):0}%</div>
+            <div style="font-size:9px;color:var(--tx3);">migrado</div>
+          </div>
+        </div>
+        <!-- Lista de municípios -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;">
+          ${implComSis.sort((a,b)=>{const ma=municipios.find(x=>x.id===a.municipio_id),mb=municipios.find(x=>x.id===b.municipio_id);return(ma?.nome||'').localeCompare(mb?.nome||'');}).map(r=>{
+            const m=municipios.find(x=>x.id===r.municipio_id);
+            const isMig=psig(r.migracao).includes(s.sigla);
+            const isSem=psig(r.sem_uso).includes(s.sigla);
+            const bg=isMig?'#ECFDF5':isSem?'#F3F4F6':'#EEF2FF';
+            const cor=isMig?'#059669':isSem?'#9CA3AF':'#4338CA';
+            const tag=isMig?'✅ Migrado':isSem?'— Sem uso':'▶ Em impl.';
+            return`<div style="background:${bg};border-radius:var(--ra);padding:7px 10px;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+              <span style="font-size:11px;font-weight:700;color:var(--tx);">${m?m.nome:'—'}</span>
+              <span style="font-size:9px;font-weight:800;color:${cor};white-space:nowrap;">${tag}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── RELATÓRIO DE ATRASOS ──────────────────────────────────────
+function renderRelAtrasos(){
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const atrasadas=[...implantacoes].filter(r=>isAtr(r)).sort((a,b)=>new Date(a.data_conclusao)-new Date(b.data_conclusao));
+  const risco=implantacoes.filter(r=>{
+    if(r.status==='Concluída'||r.status==='Cancelada'||isAtr(r)) return false;
+    if(!r.data_previsao&&!r.data_conclusao) return false;
+    const prazo=new Date((r.data_previsao||r.data_conclusao)+'T12:00');
+    const diasRestantes=Math.floor((prazo-hoje)/86400000);
+    return diasRestantes>=0 && diasRestantes<=30;
+  });
+
+  el('relConteudo').innerHTML=`<div id="relImpressao">
+    <div style="background:linear-gradient(135deg,#DC2626,#B91C1C);border-radius:var(--rb);padding:20px 24px;color:#fff;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:11px;opacity:.7;text-transform:uppercase;letter-spacing:.8px;">Relatório</div>
+        <div style="font-size:22px;font-weight:800;">⚠️ Implantações em Atraso</div>
+        <div style="font-size:12px;opacity:.8;margin-top:2px;">Gerado em ${new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);" onclick="imprimirRel()">🖨️ Imprimir</button>
+    </div>
+
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
+      <div class="kcard kc-atr"><div class="kn">${atrasadas.length}</div><div class="kl">Com atraso</div></div>
+      <div class="kcard kc-sus"><div class="kn">${risco.length}</div><div class="kl">Vencem em 30 dias</div></div>
+      <div class="kcard kc-ni"><div class="kn">${implantacoes.filter(r=>r.status==='Suspenso').length}</div><div class="kl">Suspensas</div></div>
+    </div>
+
+    <!-- Atrasadas -->
+    ${atrasadas.length>0?`
+    <div class="card" style="padding:0;margin-bottom:16px;border-left:4px solid var(--err);">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:800;color:var(--err);">🔴 Prazo Vencido (${atrasadas.length})</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr>
+          <th>Município</th><th>Técnico</th><th>Status</th><th>Fase</th><th>Prazo</th><th>Dias em atraso</th><th>Obs. Recente</th>
+        </tr></thead>
+        <tbody>
+          ${atrasadas.map(r=>{
+            const m=municipios.find(x=>x.id===r.municipio_id);
+            const t=tecnicos.find(x=>x.id===r.tecnico_id);
+            const dias=Math.floor((hoje-new Date(r.data_conclusao+'T12:00'))/86400000);
+            const hist=LS.load('ig3_hist').filter(h=>h.implId===r.id).sort((a,b)=>new Date(b.dt)-new Date(a.dt));
+            const ultimaObs=hist.length>0?hist[0].texto.slice(0,60)+(hist[0].texto.length>60?'…':''):r.obs?r.obs.slice(0,60):'—';
+            return`<tr style="background:#FEF2F2;">
+              <td style="padding:9px 12px;border-bottom:1px solid #FEE2E2;font-size:12px;font-weight:700;">${m?munLabel(m):'—'}</td>
+              <td style="padding:9px 12px;border-bottom:1px solid #FEE2E2;font-size:11px;">${t?.nome||'—'}</td>
+              <td style="padding:9px 12px;border-bottom:1px solid #FEE2E2;"><span class="bdg ${stCls(r.status)}">${r.status}</span></td>
+              <td style="padding:9px 12px;border-bottom:1px solid #FEE2E2;font-size:11px;">${r.fase||'—'}</td>
+              <td style="padding:9px 12px;border-bottom:1px solid #FEE2E2;font-size:11px;color:var(--err);font-weight:700;">${fmtD(r.data_conclusao)}</td>
+              <td style="padding:9px 12px;border-bottom:1px solid #FEE2E2;font-size:12px;font-weight:800;color:var(--err);">${dias} dia${dias>1?'s':''}</td>
+              <td style="padding:9px 12px;border-bottom:1px solid #FEE2E2;font-size:11px;color:var(--tx3);">${ultimaObs}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>
+    </div>`:'<div class="empty" style="background:var(--okbg);border:1px solid var(--okb);border-radius:var(--rb);"><div class="ei">✅</div><div class="et" style="color:var(--ok);">Nenhuma implantação atrasada!</div></div>'}
+
+    <!-- Em risco (vencem em 30 dias) -->
+    ${risco.length>0?`
+    <div class="card" style="padding:0;border-left:4px solid var(--warn);">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:800;color:var(--warn);">🟡 Vencem nos próximos 30 dias (${risco.length})</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Município</th><th>Técnico</th><th>Status</th><th>Fase</th><th>Prazo</th><th>Dias restantes</th></tr></thead>
+        <tbody>
+          ${risco.sort((a,b)=>new Date(a.data_conclusao)-new Date(b.data_conclusao)).map(r=>{
+            const m=municipios.find(x=>x.id===r.municipio_id);
+            const t=tecnicos.find(x=>x.id===r.tecnico_id);
+            const dias=Math.floor((new Date((r.data_previsao||r.data_conclusao)+'T12:00')-hoje)/86400000);
+            return`<tr style="background:#FFFBEB;">
+              <td style="padding:9px 12px;border-bottom:1px solid #FEF3C7;font-size:12px;font-weight:700;">${m?munLabel(m):'—'}</td>
+              <td style="padding:9px 12px;border-bottom:1px solid #FEF3C7;font-size:11px;">${t?.nome||'—'}</td>
+              <td style="padding:9px 12px;border-bottom:1px solid #FEF3C7;"><span class="bdg ${stCls(r.status)}">${r.status}</span></td>
+              <td style="padding:9px 12px;border-bottom:1px solid #FEF3C7;font-size:11px;">${r.fase||'—'}</td>
+              <td style="padding:9px 12px;border-bottom:1px solid #FEF3C7;font-size:11px;font-weight:700;color:var(--warn);">${fmtD(r.data_conclusao||r.data_previsao)}</td>
+              <td style="padding:9px 12px;border-bottom:1px solid #FEF3C7;font-size:12px;font-weight:800;color:var(--warn);">${dias} dia${dias>1?'s':''}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>
+    </div>`:''}
+  </div>`;
+}
+
+function imprimirRel(){
+  const conteudo = el('relImpressao');
+  if(!conteudo){toast('⚠️ Selecione um município primeiro');return;}
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatório ImplanGest</title>
+  <style>
+    body{font-family:Inter,system-ui,sans-serif;font-size:13px;color:#1E1B4B;padding:20px;max-width:900px;margin:0 auto;}
+    *{box-sizing:border-box;}
+    .fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px;}
+    @media print{body{padding:0;}}
+  </style></head><body>
+  ${conteudo.innerHTML}
+  <script>window.onload=()=>window.print();<\/script>
+  </body></html>`);
+  win.document.close();
+}
+
+// ══════════════════════════════════════════════════════════════
+// FUNÇÕES LEGADAS (mantidas por compatibilidade)
+// ══════════════════════════════════════════════════════════════
+function renderAnotGlobal(){
+  const todas = LS.load('ig3_anot_g').sort((a,b)=>new Date(b.dt)-new Date(a.dt));
+  el('content').innerHTML=`
+    <div style="max-width:700px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);padding:16px;margin-bottom:16px;">
+        <textarea id="anotGInput" rows="3" placeholder="Escreva sua anotação pessoal..."></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+          <button class="btn btn-p btn-sm" onclick="salvarAnotGlobal()">💾 Registrar anotação</button>
+        </div>
+      </div>
+      <div id="anotGList"></div>
+    </div>`;
+  renderAnotGList();
+}
+
+function renderAnotGList(){
+  const todas=LS.load('ig3_anot_g').sort((a,b)=>new Date(b.dt)-new Date(a.dt));
+  const div=el('anotGList'); if(!div) return;
+  if(todas.length===0){div.innerHTML='<div class="empty"><div class="ei">📝</div><div class="et">Nenhuma anotação</div><div class="es">Registre suas observações e notas pessoais</div></div>';return;}
+  div.innerHTML=todas.map(a=>`
+    <div style="background:var(--warnbg);border:1px solid var(--warnb);border-left:3px solid var(--warn);border-radius:var(--rb);padding:12px 14px;margin-bottom:10px;position:relative;">
+      <div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:6px;">${new Date(a.dt).toLocaleString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:13px;line-height:1.6;white-space:pre-wrap;color:var(--tx);">${a.texto}</div>
+      <button onclick="excluirAnotG('${a.id}')" style="position:absolute;top:10px;right:10px;background:none;border:none;color:var(--tx4);font-size:14px;cursor:pointer;" title="Excluir">✕</button>
+    </div>`).join('');
+}
+
+function abrirNovaAnotGlobal(){ el('anotGInput')?.focus(); }
+
+function salvarAnotGlobal(){
+  const txt=el('anotGInput')?.value.trim(); if(!txt){toast('⚠️ Escreva algo');return;}
+  const a={id:uid(),texto:txt,dt:new Date().toISOString()};
+  const all=LS.load('ig3_anot_g'); all.push(a); LS.save('ig3_anot_g',all);
+  el('anotGInput').value='';
+  renderAnotGList();
+  toast('✅ Anotação salva!');
+}
+
+function excluirAnotG(id){
+  if(!confirm('Excluir esta anotação?'))return;
+  LS.save('ig3_anot_g',LS.load('ig3_anot_g').filter(a=>a.id!==id));
+  renderAnotGList();
+}
+
+// ══════════════════════════════════════════════════════════════
+// AGENDA GLOBAL (menu próprio)
+// ══════════════════════════════════════════════════════════════
+function renderAgendaGlobal(){
+  el('content').innerHTML=`
+    <div style="max-width:700px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);padding:16px;margin-bottom:16px;">
+        <div class="fr3" style="margin-bottom:10px;">
+          <div class="fg" style="margin:0;"><label class="fl">Título *</label><input type="text" id="ageGTitulo" placeholder="Nome do compromisso"></div>
+          <div class="fg" style="margin:0;"><label class="fl">Data *</label><input type="date" id="ageGData"></div>
+          <div class="fg" style="margin:0;"><label class="fl">Hora</label><input type="time" id="ageGHora"></div>
+        </div>
+        <div class="fg" style="margin-bottom:10px;"><label class="fl">Município (opcional)</label>
+          <select id="ageGMun"><option value="">Nenhum</option>${municipios.sort((a,b)=>a.nome.localeCompare(b.nome)).map(m=>`<option value="${m.id}">${munLabel(m)}</option>`).join('')}</select>
+        </div>
+        <div class="fg" style="margin-bottom:10px;"><label class="fl">Descrição</label><textarea id="ageGDesc" rows="2" placeholder="Detalhes do compromisso..."></textarea></div>
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn btn-p btn-sm" onclick="salvarAgendaGlobal()">📅 Adicionar à agenda</button>
+        </div>
+      </div>
+      <div id="ageGList"></div>
+    </div>`;
+  renderAgendaGList();
+}
+
+function renderAgendaGList(){
+  const todos=LS.load('ig3_agenda_g').sort((a,b)=>new Date(a.dt+' '+(a.hora||'00:00'))-new Date(b.dt+' '+(b.hora||'00:00')));
+  const div=el('ageGList'); if(!div) return;
+  if(todos.length===0){div.innerHTML='<div class="empty"><div class="ei">📅</div><div class="et">Nenhum compromisso</div><div class="es">Adicione compromissos à sua agenda</div></div>';return;}
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  div.innerHTML=todos.map(a=>{
+    const dt=new Date(a.dt+'T00:00');
+    const passado=dt<hoje, hojeFlag=dt.getTime()===hoje.getTime();
+    const mun=a.munId?municipios.find(x=>x.id===a.munId):null;
+    const cor=passado?'#EF4444':hojeFlag?'#059669':'#2563EB';
+    const bg=passado?'var(--errbg)':hojeFlag?'var(--okbg)':'var(--infobg)';
+    const bd=passado?'var(--errb)':hojeFlag?'var(--okb)':'var(--infob)';
+    return`<div style="display:flex;gap:12px;padding:12px 14px;background:${bg};border:1px solid ${bd};border-radius:var(--rb);margin-bottom:8px;align-items:flex-start;">
+      <div style="text-align:center;min-width:40px;flex-shrink:0;">
+        <div style="font-size:20px;font-weight:800;color:${cor};line-height:1;">${a.dt.slice(8,10)}</div>
+        <div style="font-size:9px;font-weight:700;color:var(--tx3);">${meses[parseInt(a.dt.slice(5,7))-1]}</div>
+        ${a.hora?`<div style="font-size:9px;color:var(--tx3);">${a.hora}</div>`:''}
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;${passado?'text-decoration:line-through;color:var(--tx3);':''}">${a.titulo}</div>
+        ${mun?`<div style="font-size:11px;color:var(--tx3);margin-top:2px;">🏛️ ${munLabel(mun)}</div>`:''}
+        ${a.desc?`<div style="font-size:11px;color:var(--tx2);margin-top:4px;">${a.desc}</div>`:''}
+      </div>
+      ${hojeFlag?'<span style="font-size:10px;font-weight:800;padding:2px 8px;background:var(--okbg);color:var(--ok);border-radius:20px;border:1px solid var(--okb);">Hoje!</span>':''}
+      ${passado?'<span style="font-size:10px;font-weight:700;padding:2px 8px;background:var(--errbg);color:var(--err);border-radius:20px;">Passado</span>':''}
+      <button onclick="excluirAgendaG('${a.id}')" style="background:none;border:none;color:var(--tx4);font-size:14px;cursor:pointer;flex-shrink:0;" title="Excluir">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function abrirNovoCompromissoGlobal(){ el('ageGTitulo')?.focus(); }
+
+function salvarAgendaGlobal(){
+  const titulo=el('ageGTitulo')?.value.trim(), data=el('ageGData')?.value;
+  if(!titulo||!data){toast('⚠️ Título e data são obrigatórios');return;}
+  const a={id:uid(),titulo,dt:data,hora:el('ageGHora')?.value||'',munId:el('ageGMun')?.value||null,desc:el('ageGDesc')?.value.trim()||''};
+  const all=LS.load('ig3_agenda_g'); all.push(a); LS.save('ig3_agenda_g',all);
+  el('ageGTitulo').value=''; el('ageGData').value=''; el('ageGHora').value=''; el('ageGDesc').value='';
+  renderAgendaGList();
+  toast('✅ Compromisso adicionado!');
+}
+
+function excluirAgendaG(id){
+  if(!confirm('Excluir este compromisso?'))return;
+  LS.save('ig3_agenda_g',LS.load('ig3_agenda_g').filter(a=>a.id!==id));
+  renderAgendaGList();
+}
+
+// ══════════════════════════════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════════════════════════════
+// Credenciais padrão (altere em Configurações)
+const DEFAULT_EMAIL = localStorage.getItem('ig3_usr_email') || 'admin@implangest.com';
+const DEFAULT_SENHA = localStorage.getItem('ig3_usr_senha') || 'implangest2024';
+
+function doLogin(){
+  const email = el('lgEmail').value.trim().toLowerCase();
+  const senha = el('lgSenha').value;
+  const okEmail = localStorage.getItem('ig3_usr_email') || DEFAULT_EMAIL;
+  const okSenha = localStorage.getItem('ig3_usr_senha') || DEFAULT_SENHA;
+  if(email === okEmail.toLowerCase() && senha === okSenha){
+    localStorage.setItem('ig3_session', btoa(email+':'+Date.now()));
+    el('loginScreen').style.display = 'none';
+    el('shell').style.display = 'flex';
+    el('lgErro').style.display = 'none';
+    go('dash');
+  } else {
+    el('lgErro').style.display = 'block';
+    el('lgSenha').value = '';
+    el('lgSenha').focus();
+  }
+}
+
+function logout(){
+  localStorage.removeItem('ig3_session');
+  el('shell').style.display = 'none';
+  el('loginScreen').style.display = 'flex';
+  el('lgEmail').value = '';
+  el('lgSenha').value = '';
+}
+
+function checkSession(){
+  const sess = localStorage.getItem('ig3_session');
+  if(!sess) return false;
+  // Sessão válida por 8 horas
+  try {
+    const decoded = atob(sess);
+    const ts = parseInt(decoded.split(':').pop());
+    if(Date.now() - ts > 8 * 3600000){ localStorage.removeItem('ig3_session'); return false; }
+    return true;
+  } catch(e){ return false; }
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+async function init(){
+  await new Promise(r=>setTimeout(r,500));
+  [municipios,tecnicos,sistemas,implantacoes]=await Promise.all([
+    dbGet('ig3_mun'),dbGet('ig3_tec'),dbGet('ig3_sis'),dbGet('ig3_impl')
+  ]);
+  // Seed sistemas padrão se vazio
+  if(sistemas.length===0){
+    sistemas=SIS_DEFAULT.map(s=>({...s,id:uid(),created_at:new Date().toISOString()}));
+    LS.save('ig3_sis',sistemas);
+  }
+  atualizarBadge();
+  const ld=el('ld');ld.style.opacity='0';setTimeout(()=>ld.style.display='none',380);
+  // Verificar sessão
+  if(checkSession()){
+    el('shell').style.display='flex';
+    go('dash');
+  } else {
+    el('loginScreen').style.display='flex';
+  }
+}
+init();
+</script>
+</body>
+</html>
