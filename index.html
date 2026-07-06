@@ -272,6 +272,7 @@ tr:last-child td{border-bottom:none;}
       <div class="nav-item" onclick="go('sis')"><span class="ni">📦</span>Sistemas</div>
       <div class="nav-sec">Config</div>
       <div class="nav-item" onclick="go('cfg')"><span class="ni">⚙️</span>Configurações</div>
+      <div class="nav-item" onclick="migrarDadosLocais()" style="color:#E85D75;"><span class="ni">⬆️</span>Migrar dados locais → Nuvem</div>
     </div>
     <div id="navUser"></div>
   </nav>
@@ -560,6 +561,27 @@ async function dbDel(table, id) {
   }
   LS.del(table,id);
 }
+async function migrarDadosLocais(){
+  if(!confirm('Isso vai enviar para a nuvem todos os dados salvos apenas neste navegador (municípios, técnicos, sistemas, implantações). Pode levar alguns segundos. Continuar?')) return;
+  const tabelas=['ig3_mun','ig3_tec','ig3_sis','ig3_impl'];
+  let totalEnviados=0, totalTabelas=0;
+  for(const tabela of tabelas){
+    const registros=LS.load(tabela);
+    if(!registros.length) continue;
+    totalTabelas++;
+    for(const row of registros){
+      await dbSet(tabela, {...row});
+      totalEnviados++;
+    }
+  }
+  if(totalEnviados===0){
+    alert('Não encontrei nenhum dado salvo localmente neste navegador para migrar.');
+  } else {
+    alert('✅ Migração concluída! '+totalEnviados+' registro(s) processado(s), de '+totalTabelas+' tabela(s). Recarregando os dados...');
+  }
+  await atualizarDados();
+}
+
 function uid(){return'_'+Math.random().toString(36).slice(2)+Date.now();}
 
 // Recarrega tudo do banco (botão manual + auto ao voltar pra aba)
