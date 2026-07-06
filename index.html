@@ -495,19 +495,57 @@ const LS = {
 // ══════════════════════════════════════════════════════════════
 // DB GENÉRICO
 // ══════════════════════════════════════════════════════════════
+function extrairColunaInexistente(msg){
+  if(!msg) return null;
+  const m = msg.match(/Could not find the '([^']+)' column/i);
+  return m ? m[1] : null;
+}
+function showConnErrBanner(msg){
+  let b=document.getElementById('connErrBanner');
+  if(!b){
+    b=document.createElement('div');
+    b.id='connErrBanner';
+    b.style.cssText='position:fixed;top:0;left:0;right:0;background:#E85D75;color:#fff;padding:10px 16px;font-family:sans-serif;font-size:13px;z-index:99999;text-align:center;';
+    document.body.appendChild(b);
+  }
+  b.textContent='⚠️ Não foi possível salvar/carregar do banco de dados. Detalhe: '+msg+'. Clique em 🔄 para tentar de novo.';
+}
+function hideConnErrBanner(){ const b=document.getElementById('connErrBanner'); if(b) b.remove(); }
+
 async function dbGet(table) {
   const sb=getSb();
-  if(sb){ const{data,error}=await sb.from(table).select('*').order('created_at',{ascending:true}); if(!error&&data)return data; }
+  if(sb){
+    const{data,error}=await sb.from(table).select('*').order('created_at',{ascending:true});
+    if(!error&&data){ hideConnErrBanner(); return data; }
+    if(error){ console.warn('dbGet erro em '+table+':', error); showConnErrBanner(table+': '+error.message); }
+  }
   return LS.load(table);
 }
 async function dbSet(table, row) {
   const sb=getSb();
   if(sb){
-    if(row.id&&!String(row.id).startsWith('_')){
-      await sb.from(table).update({...row,updated_at:new Date().toISOString()}).eq('id',row.id);
-    } else {
-      const{data}=await sb.from(table).insert([{...row,id:undefined,created_at:new Date().toISOString(),updated_at:new Date().toISOString()}]).select().single();
-      if(data) row.id=data.id;
+    let payload={...row};
+    let tentativas=0;
+    while(tentativas<6){
+      tentativas++;
+      try{
+        if(payload.id&&!String(payload.id).startsWith('_')){
+          const{error}=await sb.from(table).update({...payload,updated_at:new Date().toISOString()}).eq('id',payload.id);
+          if(error) throw error;
+        } else {
+          const{data,error}=await sb.from(table).insert([{...payload,id:undefined,created_at:new Date().toISOString(),updated_at:new Date().toISOString()}]).select().single();
+          if(error) throw error;
+          if(data) row.id=data.id;
+        }
+        hideConnErrBanner();
+        break;
+      }catch(e){
+        const colunaRuim=extrairColunaInexistente(e.message);
+        if(colunaRuim && colunaRuim in payload){ delete payload[colunaRuim]; continue; }
+        console.warn('dbSet erro em '+table+':', e);
+        showConnErrBanner(table+': '+e.message+' — registro ficou só neste navegador');
+        break;
+      }
     }
   }
   const loc=LS.load(table);const i=loc.findIndex(r=>r.id===row.id);
@@ -516,10 +554,32 @@ async function dbSet(table, row) {
 }
 async function dbDel(table, id) {
   const sb=getSb();
-  if(sb&&!String(id).startsWith('_')) await sb.from(table).delete().eq('id',id);
+  if(sb&&!String(id).startsWith('_')){
+    try{ const{error}=await sb.from(table).delete().eq('id',id); if(error) throw error; hideConnErrBanner(); }
+    catch(e){ console.warn('dbDel erro:',e); showConnErrBanner(table+': '+e.message); }
+  }
   LS.del(table,id);
 }
 function uid(){return'_'+Math.random().toString(36).slice(2)+Date.now();}
+
+// Recarrega tudo do banco (botão manual + auto ao voltar pra aba)
+async function atualizarDados(){
+  const antes = {mun:municipios.length,tec:tecnicos.length,sis:sistemas.length,impl:implantacoes.length};
+  [municipios,tecnicos,sistemas,implantacoes]=await Promise.all([
+    dbGet('ig3_mun'),dbGet('ig3_tec'),dbGet('ig3_sis'),dbGet('ig3_impl')
+  ]);
+  atualizarBadge();
+  if(typeof go==='function' && curPage) go(curPage);
+  const depois = {mun:municipios.length,tec:tecnicos.length,sis:sistemas.length,impl:implantacoes.length};
+  if(JSON.stringify(antes)!==JSON.stringify(depois)) toast('🔄 Dados atualizados!');
+}
+let __ultimaAtualizacao=Date.now();
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible' && Date.now()-__ultimaAtualizacao>15000 && curUser){
+    __ultimaAtualizacao=Date.now();
+    atualizarDados();
+  }
+});
 
 // ══════════════════════════════════════════════════════════════
 // UTILS
@@ -2063,6 +2123,7 @@ function renderNavUser(){
         <div style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${curUser.nome}</div>
         <div style="font-size:10px;color:var(--tx3);">${curUser.email}</div>
       </div>
+      <button onclick="atualizarDados()" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:14px;" title="Atualizar dados">🔄</button>
       <button onclick="logout()" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:14px;" title="Sair">↩</button>
     </div>`;
 }
