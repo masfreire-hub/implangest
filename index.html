@@ -1238,6 +1238,14 @@ async function salvarSis(){
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
+function renderEspaco(){
+  el('content').innerHTML = `
+    <div class="empty" style="padding:60px 20px;text-align:center;">
+      <div class="ei" style="font-size:40px;">🏠</div>
+      <div class="et" style="font-size:16px;font-weight:800;margin-top:8px;">Meu Espaço</div>
+      <div class="es" style="color:var(--tx3);margin-top:6px;">Esta área ainda está em construção.</div>
+    </div>`;
+}
 function renderCfg(){
   el('content').innerHTML=`
     <div style="max-width:560px;">
