@@ -563,21 +563,62 @@ async function dbDel(table, id) {
 }
 async function migrarDadosLocais(){
   if(!confirm('Isso vai enviar para a nuvem todos os dados salvos apenas neste navegador (municípios, técnicos, sistemas, implantações). Pode levar alguns segundos. Continuar?')) return;
-  const tabelas=['ig3_mun','ig3_tec','ig3_sis','ig3_impl'];
-  let totalEnviados=0, totalTabelas=0;
-  for(const tabela of tabelas){
+  const sb=getSb();
+  if(!sb){ alert('Sem conexão com o Supabase agora — recarregue a página e tente de novo.'); return; }
+
+  // Ordem importa: implantações referenciam município e técnico, então migramos esses primeiro
+  const ordem=['ig3_mun','ig3_tec','ig3_sis','ig3_impl'];
+  const mapaIds={ig3_mun:{}, ig3_tec:{}}; // id antigo (local) -> id novo (Supabase)
+  let totalEnviados=0, totalTabelas=0, erros=[];
+
+  async function enviarUm(tabela, payloadOriginal){
+    let payload={...payloadOriginal};
+    delete payload.id; // sempre inserir como novo registro, deixando o Supabase gerar o id
+    payload.created_at=payload.created_at||new Date().toISOString();
+    payload.updated_at=new Date().toISOString();
+    let tentativas=0;
+    while(tentativas<6){
+      tentativas++;
+      try{
+        const{data,error}=await sb.from(tabela).insert([payload]).select().single();
+        if(error) throw error;
+        return {ok:true, novoId:data?.id};
+      }catch(e){
+        const m=(e.message||'').match(/Could not find the '([^']+)' column/i);
+        if(m && m[1] in payload){ delete payload[m[1]]; continue; }
+        return {ok:false, erro:e.message||'erro desconhecido'};
+      }
+    }
+    return {ok:false, erro:'muitas tentativas'};
+  }
+
+  for(const tabela of ordem){
     const registros=LS.load(tabela);
     if(!registros.length) continue;
     totalTabelas++;
     for(const row of registros){
-      await dbSet(tabela, {...row});
-      totalEnviados++;
+      let payload={...row};
+      // Corrige referências a município/técnico que também estavam presos localmente
+      if(tabela==='ig3_impl'){
+        if(payload.municipio_id && mapaIds.ig3_mun[payload.municipio_id]) payload.municipio_id=mapaIds.ig3_mun[payload.municipio_id];
+        if(payload.tecnico_id && mapaIds.ig3_tec[payload.tecnico_id]) payload.tecnico_id=mapaIds.ig3_tec[payload.tecnico_id];
+      }
+      const r=await enviarUm(tabela, payload);
+      if(r.ok){
+        totalEnviados++;
+        if(tabela==='ig3_mun'||tabela==='ig3_tec') mapaIds[tabela][row.id]=r.novoId;
+      } else {
+        erros.push(tabela+' (id local '+row.id+'): '+r.erro);
+      }
     }
   }
-  if(totalEnviados===0){
+
+  if(erros.length){
+    alert('Migração parcial. '+totalEnviados+' registro(s) enviado(s) com sucesso.\n\nFalharam:\n'+erros.slice(0,8).join('\n'));
+  } else if(totalEnviados===0){
     alert('Não encontrei nenhum dado salvo localmente neste navegador para migrar.');
   } else {
-    alert('✅ Migração concluída! '+totalEnviados+' registro(s) processado(s), de '+totalTabelas+' tabela(s). Recarregando os dados...');
+    alert('✅ Migração concluída de verdade! '+totalEnviados+' registro(s) enviado(s) e confirmados na nuvem. Recarregando os dados...');
   }
   await atualizarDados();
 }
