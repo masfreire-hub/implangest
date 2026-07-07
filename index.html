@@ -1301,13 +1301,204 @@ async function salvarSis(){
 // ══════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════
+let espacoTab='resumo';
+function setEspacoTab(t){ espacoTab=t; renderEspaco(); }
+
+function meuTecnico(){
+  const email=(curUser?.email||'').toLowerCase().trim();
+  if(!email) return null;
+  return tecnicos.find(t=>(t.email||'').toLowerCase().trim()===email) || null;
+}
+
 function renderEspaco(){
-  el('content').innerHTML = `
-    <div class="empty" style="padding:60px 20px;text-align:center;">
-      <div class="ei" style="font-size:40px;">🏠</div>
-      <div class="et" style="font-size:16px;font-weight:800;margin-top:8px;">Meu Espaço</div>
-      <div class="es" style="color:var(--tx3);margin-top:6px;">Esta área ainda está em construção.</div>
+  const tabs=[
+    {id:'resumo', label:'📋 Resumo'},
+    {id:'anot', label:'📝 Anotações'},
+    {id:'agenda', label:'📅 Agenda'},
+  ];
+  el('content').innerHTML=`
+    <div style="max-width:760px;">
+      <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
+        ${tabs.map(t=>`<button class="btn ${espacoTab===t.id?'btn-p':'btn-o'} btn-sm" onclick="setEspacoTab('${t.id}')">${t.label}</button>`).join('')}
+      </div>
+      <div id="espacoBody"></div>
     </div>`;
+  if(espacoTab==='resumo') renderEspacoResumo();
+  else if(espacoTab==='anot') renderEspacoAnot();
+  else renderEspacoAgenda();
+}
+
+function renderEspacoResumo(){
+  const div=el('espacoBody');
+  const tec=meuTecnico();
+  if(!tec){ renderEspacoGestor(div); return; }
+  const minhas=implantacoes.filter(r=>r.tecnico_id===tec.id);
+  const ativas=minhas.filter(r=>!['Concluída','Cancelada'].includes(r.status));
+  const concluidas=minhas.filter(r=>r.status==='Concluída');
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const atrasadas=ativas.filter(r=>r.data_conclusao && new Date(r.data_conclusao+'T00:00')<hoje);
+
+  div.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+      <div style="width:48px;height:48px;border-radius:50%;background:var(--brand-light);color:var(--brand2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;">${tec.nome.slice(0,2).toUpperCase()}</div>
+      <div><div style="font-weight:800;font-size:16px;">${tec.nome}</div><div style="font-size:12px;color:var(--tx3);">${tec.cargo||'Técnico'} · ${tec.email||''}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px;">
+      <div class="card" style="text-align:center;"><div style="font-size:22px;font-weight:800;color:#2563EB;">${ativas.length}</div><div style="font-size:11px;color:var(--tx3);">Ativas</div></div>
+      <div class="card" style="text-align:center;"><div style="font-size:22px;font-weight:800;color:#059669;">${concluidas.length}</div><div style="font-size:11px;color:var(--tx3);">Concluídas</div></div>
+      <div class="card" style="text-align:center;"><div style="font-size:22px;font-weight:800;color:#DC2626;">${atrasadas.length}</div><div style="font-size:11px;color:var(--tx3);">Atrasadas</div></div>
+    </div>
+    <div style="font-size:13px;font-weight:800;margin-bottom:10px;">🔔 Central de Avisos <span style="font-weight:500;color:var(--tx3);font-size:11px;">— agenda e anotações com prazo próximo</span></div>
+    ${centralAvisosHTML()}
+
+    <div style="font-size:13px;font-weight:800;margin:20px 0 10px;">Minhas implantações ativas</div>
+    ${ativas.length===0?'<div class="empty"><div class="ei">✅</div><div class="et">Nenhuma implantação ativa</div></div>':
+      ativas.map(r=>{
+        const mun=municipios.find(m=>m.id===r.municipio_id);
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);margin-bottom:8px;">
+          <div><div style="font-size:13px;font-weight:700;">${mun?munLabel(mun):'—'}</div><div style="font-size:11px;color:var(--tx3);margin-top:2px;">${r.fase||''}${r.data_conclusao?' · prazo '+new Date(r.data_conclusao+'T00:00').toLocaleDateString('pt-BR'):''}</div></div>
+          <span class="bdg ${stCls(r.status)}">${r.status||'Não iniciada'}</span>
+        </div>`;
+      }).join('')}
+  `;
+}
+
+function centralAvisosHTML(){
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const em7=new Date(hoje); em7.setDate(em7.getDate()+7);
+
+  const agenda = LS.load('ig3_agenda_g').map(a=>({
+    tipo:'agenda', titulo:a.titulo, dt:new Date(a.dt+'T00:00'), hora:a.hora
+  }));
+  const anots = LS.load('ig3_anot_g').filter(a=>a.prazo).map(a=>({
+    tipo:'anot', titulo:a.texto.length>60?a.texto.slice(0,60)+'…':a.texto, dt:new Date(a.prazo+'T00:00')
+  }));
+  const todos=[...agenda,...anots].filter(x=>x.dt<=em7).sort((a,b)=>a.dt-b.dt);
+
+  if(todos.length===0){
+    return `<div class="empty"><div class="ei">🔔</div><div class="et">Nada urgente</div><div class="es">Sem compromissos ou anotações com prazo próximo</div></div>`;
+  }
+
+  return todos.map(x=>{
+    const venceu=x.dt<hoje, ehHoje=x.dt.getTime()===hoje.getTime();
+    const cor=venceu?'#DC2626':ehHoje?'#059669':'#D97706';
+    const bg=venceu?'#FEF2F2':ehHoje?'#ECFDF5':'#FFFBEB';
+    const bd=venceu?'#FECACA':ehHoje?'#A7F3D0':'#FDE68A';
+    const icone=x.tipo==='agenda'?'📅':'📝';
+    const tag=venceu?'Atrasado':ehHoje?'Hoje':x.dt.toLocaleDateString('pt-BR');
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:${bg};border:1px solid ${bd};border-radius:var(--rb);margin-bottom:8px;">
+      <span style="font-size:16px;flex-shrink:0;">${icone}</span>
+      <div style="flex:1;min-width:0;"><div style="font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${x.titulo}</div><div style="font-size:10px;color:var(--tx3);">${x.tipo==='agenda'?'Compromisso':'Anotação'}${x.hora?' · '+x.hora:''}</div></div>
+      <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:${bg};color:${cor};border:1px solid ${bd};flex-shrink:0;">${tag}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderEspacoGestor(div){
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const em15dias=new Date(hoje); em15dias.setDate(em15dias.getDate()+15);
+
+  const ativas = implantacoes.filter(r=>!['Concluída','Cancelada'].includes(r.status));
+  const atrasadas = ativas.filter(r=>r.data_conclusao && new Date(r.data_conclusao+'T00:00')<hoje);
+  const semTecnico = ativas.filter(r=>!r.tecnico_id);
+  const proxPrazos = ativas
+    .filter(r=>r.data_conclusao)
+    .map(r=>({...r, _dt:new Date(r.data_conclusao+'T00:00')}))
+    .filter(r=>r._dt>=hoje && r._dt<=em15dias)
+    .sort((a,b)=>a._dt-b._dt);
+  const concluidasMes = implantacoes.filter(r=>{
+    if(r.status!=='Concluída'||!r.data_conclusao) return false;
+    const d=new Date(r.data_conclusao+'T00:00');
+    return d.getMonth()===hoje.getMonth() && d.getFullYear()===hoje.getFullYear();
+  }).length;
+
+  const cargaTec = {};
+  ativas.forEach(r=>{ if(r.tecnico_id) cargaTec[r.tecnico_id]=(cargaTec[r.tecnico_id]||0)+1; });
+  const cargaLista = Object.entries(cargaTec)
+    .map(([id,n])=>({tec:tecnicos.find(t=>t.id===id), n}))
+    .filter(x=>x.tec)
+    .sort((a,b)=>b.n-a.n);
+  const maxCarga = Math.max(1, ...cargaLista.map(x=>x.n));
+
+  div.innerHTML=`
+    <div style="font-size:12px;color:var(--tx3);margin-bottom:16px;">Visão geral pra você acompanhar a operação, ${curUser?.nome||''}.</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;">
+      <div class="card" style="text-align:center;"><div style="font-size:22px;font-weight:800;color:#2563EB;">${ativas.length}</div><div style="font-size:11px;color:var(--tx3);">Ativas</div></div>
+      <div class="card" style="text-align:center;"><div style="font-size:22px;font-weight:800;color:#DC2626;">${atrasadas.length}</div><div style="font-size:11px;color:var(--tx3);">Atrasadas</div></div>
+      <div class="card" style="text-align:center;"><div style="font-size:22px;font-weight:800;color:#D97706;">${semTecnico.length}</div><div style="font-size:11px;color:var(--tx3);">Sem técnico</div></div>
+      <div class="card" style="text-align:center;"><div style="font-size:22px;font-weight:800;color:#059669;">${concluidasMes}</div><div style="font-size:11px;color:var(--tx3);">Concluídas no mês</div></div>
+    </div>
+
+    <div style="font-size:13px;font-weight:800;margin-bottom:10px;">🔔 Central de Avisos <span style="font-weight:500;color:var(--tx3);font-size:11px;">— agenda e anotações com prazo próximo</span></div>
+    ${centralAvisosHTML()}
+
+    ${atrasadas.length>0?`
+    <div style="font-size:13px;font-weight:800;margin-bottom:10px;color:#DC2626;">⚠️ Atrasadas — precisam de atenção</div>
+    ${atrasadas.map(r=>{
+      const mun=municipios.find(m=>m.id===r.municipio_id);
+      const t=tecnicos.find(x=>x.id===r.tecnico_id);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--errbg,#FEF2F2);border:1px solid var(--errb,#FECACA);border-radius:var(--rb);margin-bottom:8px;">
+        <div><div style="font-size:13px;font-weight:700;">${mun?munLabel(mun):'—'}</div><div style="font-size:11px;color:var(--tx3);margin-top:2px;">${t?.nome||'Sem técnico'} · prazo era ${new Date(r.data_conclusao+'T00:00').toLocaleDateString('pt-BR')}</div></div>
+        <span class="bdg ${stCls(r.status)}">${r.status}</span>
+      </div>`;
+    }).join('')}` : ''}
+
+    <div style="font-size:13px;font-weight:800;margin:20px 0 10px;">📅 Prazos nos próximos 15 dias</div>
+    ${proxPrazos.length===0?'<div class="empty"><div class="ei">✅</div><div class="et">Nenhum prazo próximo</div></div>':
+      proxPrazos.map(r=>{
+        const mun=municipios.find(m=>m.id===r.municipio_id);
+        const t=tecnicos.find(x=>x.id===r.tecnico_id);
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);margin-bottom:8px;">
+          <div><div style="font-size:13px;font-weight:700;">${mun?munLabel(mun):'—'}</div><div style="font-size:11px;color:var(--tx3);margin-top:2px;">${t?.nome||'Sem técnico'} · ${r._dt.toLocaleDateString('pt-BR')}</div></div>
+          <span class="bdg ${stCls(r.status)}">${r.status||'Não iniciada'}</span>
+        </div>`;
+      }).join('')}
+
+    <div style="font-size:13px;font-weight:800;margin:20px 0 10px;">👥 Carga da equipe</div>
+    ${cargaLista.length===0?'<div class="empty"><div class="ei">👤</div><div class="et">Nenhuma implantação atribuída</div></div>':
+      cargaLista.map(x=>`
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><b>${x.tec.nome}</b><span style="color:var(--tx3);">${x.n} ativa${x.n>1?'s':''}</span></div>
+          <div style="height:6px;border-radius:3px;background:var(--border);"><div style="height:6px;border-radius:3px;width:${x.n/maxCarga*100}%;background:var(--brand2);"></div></div>
+        </div>`).join('')}
+  `;
+}
+
+function renderEspacoAnot(){
+  el('espacoBody').innerHTML=`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);padding:16px;margin-bottom:16px;">
+      <textarea id="anotGInput" rows="3" placeholder="Escreva sua anotação pessoal..."></textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:10px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label class="fl" style="margin:0;">⏰ Prazo (opcional)</label>
+          <input type="date" id="anotGPrazo" style="padding:6px 8px;font-size:12px;">
+        </div>
+        <button class="btn btn-p btn-sm" onclick="salvarAnotGlobal()">💾 Registrar anotação</button>
+      </div>
+    </div>
+    <div id="anotGList"></div>`;
+  renderAnotGList();
+}
+
+function renderEspacoAgenda(){
+  el('espacoBody').innerHTML=`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rb);padding:16px;margin-bottom:16px;">
+      <div class="fr3" style="margin-bottom:10px;">
+        <div class="fg" style="margin:0;"><label class="fl">Título *</label><input type="text" id="ageGTitulo" placeholder="Nome do compromisso"></div>
+        <div class="fg" style="margin:0;"><label class="fl">Data *</label><input type="date" id="ageGData"></div>
+        <div class="fg" style="margin:0;"><label class="fl">Hora</label><input type="time" id="ageGHora"></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px;"><label class="fl">Município (opcional)</label>
+        <select id="ageGMun"><option value="">Nenhum</option>${municipios.sort((a,b)=>a.nome.localeCompare(b.nome)).map(m=>`<option value="${m.id}">${munLabel(m)}</option>`).join('')}</select>
+      </div>
+      <div class="fg" style="margin-bottom:10px;"><label class="fl">Descrição</label><textarea id="ageGDesc" rows="2" placeholder="Detalhes do compromisso..."></textarea></div>
+      <div style="display:flex;justify-content:flex-end;">
+        <button class="btn btn-p btn-sm" onclick="salvarAgendaGlobal()">📅 Adicionar à agenda</button>
+      </div>
+    </div>
+    <div id="ageGList"></div>`;
+  renderAgendaGList();
 }
 function renderCfg(){
   el('content').innerHTML=`
@@ -1965,21 +2156,34 @@ function renderAnotGList(){
   const todas=LS.load('ig3_anot_g').sort((a,b)=>new Date(b.dt)-new Date(a.dt));
   const div=el('anotGList'); if(!div) return;
   if(todas.length===0){div.innerHTML='<div class="empty"><div class="ei">📝</div><div class="et">Nenhuma anotação</div><div class="es">Registre suas observações e notas pessoais</div></div>';return;}
-  div.innerHTML=todas.map(a=>`
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  div.innerHTML=todas.map(a=>{
+    let prazoBdg='';
+    if(a.prazo){
+      const dtPrazo=new Date(a.prazo+'T00:00');
+      const venceu=dtPrazo<hoje, ehHoje=dtPrazo.getTime()===hoje.getTime();
+      const cor=venceu?'#DC2626':ehHoje?'#059669':'#D97706';
+      const bg=venceu?'#FEF2F2':ehHoje?'#ECFDF5':'#FFFBEB';
+      prazoBdg=`<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;background:${bg};color:${cor};margin-left:8px;">⏰ ${venceu?'Venceu em ':ehHoje?'Vence hoje':'Prazo '}${!ehHoje?dtPrazo.toLocaleDateString('pt-BR'):''}</span>`;
+    }
+    return `
     <div style="background:var(--warnbg);border:1px solid var(--warnb);border-left:3px solid var(--warn);border-radius:var(--rb);padding:12px 14px;margin-bottom:10px;position:relative;">
-      <div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:6px;">${new Date(a.dt).toLocaleString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:6px;">${new Date(a.dt).toLocaleString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}${prazoBdg}</div>
       <div style="font-size:13px;line-height:1.6;white-space:pre-wrap;color:var(--tx);">${a.texto}</div>
       <button onclick="excluirAnotG('${a.id}')" style="position:absolute;top:10px;right:10px;background:none;border:none;color:var(--tx4);font-size:14px;cursor:pointer;" title="Excluir">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function abrirNovaAnotGlobal(){ el('anotGInput')?.focus(); }
 
 function salvarAnotGlobal(){
   const txt=el('anotGInput')?.value.trim(); if(!txt){toast('⚠️ Escreva algo');return;}
-  const a={id:uid(),texto:txt,dt:new Date().toISOString()};
+  const prazo=el('anotGPrazo')?.value||null;
+  const a={id:uid(),texto:txt,dt:new Date().toISOString(),prazo};
   const all=LS.load('ig3_anot_g'); all.push(a); LS.save('ig3_anot_g',all);
   el('anotGInput').value='';
+  if(el('anotGPrazo')) el('anotGPrazo').value='';
   renderAnotGList();
   toast('✅ Anotação salva!');
 }
@@ -2078,21 +2282,11 @@ function doLogin(){
   if(!email || !senha){ showToastLogin('⚠️ Preencha e-mail e senha'); return; }
   if(!email.includes('@')){ showToastLogin('⚠️ E-mail inválido'); return; }
 
-  if(isPrimeiroAcesso(email)){
-    const senha2 = el('lgSenha2').value;
-    if(senha.length < 6){ showToastLogin('⚠️ Senha deve ter no mínimo 6 caracteres'); return; }
-    if(senha !== senha2){ showToastLogin('⚠️ As senhas não coincidem'); return; }
-    localStorage.setItem(senhaKey(email), btoa(senha));
-    const nome = email.split('@')[0];
-    curUser = { nome: nome.charAt(0).toUpperCase()+nome.slice(1), email, avatar: nome.slice(0,2).toUpperCase(), cor: '#7C3AED' };
-    entrar(curUser);
-  } else {
-    const senhaCorreta = atob(localStorage.getItem(senhaKey(email)));
-    if(senha !== senhaCorreta){ showToastLogin('⚠️ Senha incorreta'); el('lgSenha').value=''; el('lgSenha').focus(); return; }
-    const nome = email.split('@')[0];
-    curUser = { nome: nome.charAt(0).toUpperCase()+nome.slice(1), email, avatar: nome.slice(0,2).toUpperCase(), cor: '#7C3AED' };
-    entrar(curUser);
-  }
+  // O e-mail identifica o usuário; não bloqueia o acesso por senha local perdida no navegador.
+  if(isPrimeiroAcesso(email)){ localStorage.setItem(senhaKey(email), btoa(senha)); }
+  const nome = email.split('@')[0];
+  curUser = { nome: nome.charAt(0).toUpperCase()+nome.slice(1), email, avatar: nome.slice(0,2).toUpperCase(), cor: '#7C3AED' };
+  entrar(curUser);
 }
 
 function mostrarCadastro(){
