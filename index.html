@@ -313,6 +313,7 @@ tr:last-child td{border-bottom:none;}
       <div class="fg"><label class="fl">Observações</label><textarea id="munObs" rows="2"></textarea></div>
     </div>
     <div class="mft">
+      <button class="btn btn-d btn-xs" id="munDelBtn" onclick="excluirMun(el('munId').value);closeM('mMun');" style="display:none">🗑 Excluir</button>
       <button class="btn btn-o" onclick="closeM('mMun')">Cancelar</button>
       <button class="btn btn-p" onclick="salvarMun()">💾 Salvar</button>
     </div>
@@ -336,6 +337,7 @@ tr:last-child td{border-bottom:none;}
       <div class="fg"><label class="fl">Observações</label><textarea id="tecObs" rows="2"></textarea></div>
     </div>
     <div class="mft">
+      <button class="btn btn-d btn-xs" id="tecDelBtn" onclick="excluirTec(el('tecId').value);closeM('mTec');" style="display:none">🗑 Excluir</button>
       <button class="btn btn-o" onclick="closeM('mTec')">Cancelar</button>
       <button class="btn btn-p" onclick="salvarTec()">💾 Salvar</button>
     </div>
@@ -362,6 +364,7 @@ tr:last-child td{border-bottom:none;}
       </div>
     </div>
     <div class="mft">
+      <button class="btn btn-d btn-xs" id="sisDelBtn" onclick="excluirSis(el('sisId').value);closeM('mSis');" style="display:none">🗑 Excluir</button>
       <button class="btn btn-o" onclick="closeM('mSis')">Cancelar</button>
       <button class="btn btn-p" onclick="salvarSis()">💾 Salvar</button>
     </div>
@@ -403,19 +406,9 @@ tr:last-child td{border-bottom:none;}
         <div class="fg"><label class="fl">Data Conclusão</label><input type="date" id="implDt"></div>
       </div>
       <div class="stl">📦 Sistemas Vinculados</div>
+      <div style="font-size:10px;color:var(--tx3);margin:-4px 0 8px;">Marque o sistema e escolha o status: falta implantar, já implantado, ou sem uso</div>
       <div class="sg" id="implSg"></div>
-      <div class="fr2">
-        <div class="fg">
-          <label class="fl">✅ Sistemas Migrados</label>
-          <div id="implMigGrid" style="display:flex;flex-wrap:wrap;gap:5px;min-height:32px;padding:6px;border:1.5px solid var(--border);border-radius:var(--ra);background:var(--surface);"></div>
-          <div style="font-size:10px;color:var(--tx3);margin-top:2px;">Clique nos sistemas já migrados</div>
-        </div>
-        <div class="fg">
-          <label class="fl">🚫 Sem Uso 2026</label>
-          <div id="implSemGrid" style="display:flex;flex-wrap:wrap;gap:5px;min-height:32px;padding:6px;border:1.5px solid var(--border);border-radius:var(--ra);background:var(--surface);"></div>
-          <div style="font-size:10px;color:var(--tx3);margin-top:2px;">Clique nos sistemas sem uso em 2026</div>
-        </div>
-      </div>
+      <div id="sisResumo" style="font-size:11px;margin:10px 0 4px;"></div>
       <div class="stl">📝 Observações Gerais</div>
       <textarea id="implObs" rows="3" placeholder="Observações gerais sobre esta implantação (secretário, contatos, particularidades do município)..."></textarea>
       <div style="margin-top:8px;padding:10px 12px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:var(--ra);font-size:11px;color:#4338CA;">
@@ -951,14 +944,20 @@ function renderImplTabela(){
   });
   const cnt=el('cnt');if(cnt)cnt.textContent=`${lista.length} de ${implantacoes.length} registros`;
   if(lista.length===0){el('implTbl').innerHTML='<div class="empty"><div class="ei">🚀</div><div class="et">Nenhuma implantação</div><div class="es">Crie a primeira implantação</div></div>';return;}
-  el('implTbl').innerHTML=`<div class="tbl-wrap"><table>
+  el('implTbl').innerHTML=`
+    <div style="display:flex;gap:14px;align-items:center;padding:8px 4px;font-size:11px;color:var(--tx3);">
+      <span><span class="sc mig">SIG</span> Implantado</span>
+      <span><span class="sc">SIG</span> Falta implantar</span>
+      <span><span class="sc sem">SIG</span> Sem uso</span>
+    </div>
+    <div class="tbl-wrap"><table>
     <thead><tr>
       <th style="min-width:180px;">Município</th>
       <th style="min-width:90px;">Status</th>
       <th style="min-width:140px;">Técnico</th>
       <th style="min-width:150px;">Fase</th>
       <th style="min-width:100px;">Conclusão</th>
-      <th style="min-width:200px;">Sistemas</th>
+      <th style="min-width:220px;">Sistemas</th>
       <th style="min-width:200px;">Último Registro / Obs.</th>
       <th style="width:44px;"></th>
     </tr></thead>
@@ -967,7 +966,14 @@ function renderImplTabela(){
       const mun=municipios.find(x=>x.id===r.municipio_id);
       const tec=tecnicos.find(x=>x.id===r.tecnico_id);
       const sa=psig(r.sistemas_str),ma=psig(r.migracao),xa=psig(r.sem_uso);
-      const chips=sa.map(s=>{const cls=xa.includes(s)?'sem':ma.includes(s)?'mig':'';return`<span class="sc ${cls}">${s}</span>`;}).join('');
+      const emUso = sa.filter(s=>!xa.includes(s)); // base pra calcular progresso (sem uso não conta como pendência)
+      const migCount = sa.filter(s=>ma.includes(s)).length;
+      const ordenados = [...sa].sort((a,b)=>{
+        const rank=s=>xa.includes(s)?2:ma.includes(s)?0:1; // migrado primeiro, depois falta, depois sem uso
+        return rank(a)-rank(b);
+      });
+      const chips=ordenados.map(s=>{const cls=xa.includes(s)?'sem':ma.includes(s)?'mig':'';return`<span class="sc ${cls}">${s}</span>`;}).join('');
+      const progresso = emUso.length>0 ? `<div style="font-size:10px;font-weight:800;color:${migCount===emUso.length?'var(--ok)':'var(--tx3)'};margin-bottom:3px;">${migCount}/${emUso.length} implantados</div>` : '';
       const obsPrev=r.obs?r.obs.slice(0,65)+(r.obs.length>65?'…':''):'—';
       return`<tr class="trow" onclick="abrirVer('${r.id}')">
         <td><div style="font-weight:700;font-size:12px;">${mun?munLabel(mun):'—'}</div></td>
@@ -975,7 +981,7 @@ function renderImplTabela(){
         <td><div style="font-size:11px;">${tec?.nome||'—'}</div></td>
         <td><div style="font-size:11px;">${r.fase||'—'}</div></td>
         <td><div style="font-size:11px;${isAtr(r)?'color:var(--err);font-weight:700;':''}">${fmtD(r.data_conclusao)}</div></td>
-        <td><div style="line-height:1.8;">${chips||'—'}</div></td>
+        <td>${progresso}<div style="line-height:1.8;">${chips||'—'}</div></td>
         <td><div style="font-size:11px;color:var(--tx3);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(()=>{const hist=LS.load('ig3_hist').filter(h=>h.implId===r.id).sort((a,b)=>new Date(b.dt)-new Date(a.dt));return hist.length>0?'📝 '+hist[0].texto.slice(0,55)+(hist[0].texto.length>55?'…':''):obsPrev;})()} </div></td>
         <td><button class="btn btn-o btn-xs" onclick="event.stopPropagation();abrirEditImpl('${r.id}')" title="Editar">✏️</button></td>
       </tr>`;
@@ -992,7 +998,6 @@ function abrirNovaImpl(){
   el('mImplT').textContent='Nova Implantação';el('mImplS').textContent='';
   el('implDelBtn').style.display='none';
   renderSisGrid([]);
-  setTimeout(()=>renderMigSemGrids([],[],[]),50);
   openM('mImpl');
 }
 
@@ -1011,76 +1016,98 @@ function abrirEditImpl(id){
   el('mImplS').textContent=(r.status||'')+(r.tecnico_id?(' · '+tecnicos.find(x=>x.id===r.tecnico_id)?.nome||''):'');
   el('implDelBtn').style.display='';
   const _sisSel=psig(r.sistemas_str),_migSel=psig(r.migracao),_semSel=psig(r.sem_uso);
-  renderSisGrid(_sisSel);
-  setTimeout(()=>renderMigSemGrids(_sisSel,_migSel,_semSel),50);
+  const _statusMap={};
+  _sisSel.forEach(sig=>{ _statusMap[sig] = _migSel.includes(sig) ? 'mig' : _semSel.includes(sig) ? 'sem' : 'falta'; });
+  renderSisGrid(_sisSel, _statusMap);
   openM('mImpl');
 }
 
-function renderMigSemGrids(sisSelecionados, migSelecionados, semSelecionados){
-  // Só mostra sistemas que estão vinculados à implantação
-  const base = sisSelecionados.length > 0 ? sisSelecionados : sistemas.map(s=>s.sigla);
-  ['Mig','Sem'].forEach(tipo => {
-    const grid = el('implMigGrid'.replace('Mig', tipo==='Mig'?'Mig':'Sem').replace('Grid','Grid'));
-    const sel = tipo==='Mig' ? migSelecionados : semSelecionados;
-    if(!grid) return;
-    const cor = tipo==='Mig' ? '#059669' : '#DC2626';
-    const bgOn = tipo==='Mig' ? '#ECFDF5' : '#FEF2F2';
-    const bdOn = tipo==='Mig' ? '#A7F3D0' : '#FECACA';
-    grid.innerHTML = base.map(sig => {
-      const on = sel.includes(sig);
-      const s = sistemas.find(x=>x.sigla===sig);
-      return `<div onclick="tgMigSem(this,'${tipo}')" data-sig="${sig}" style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid ${on?bdOn:'var(--border)'};background:${on?bgOn:'var(--surface2)'};color:${on?cor:'var(--tx3)'};">${sig}</div>`;
-    }).join('');
+function renderSisGrid(sel, statusMap){
+  statusMap = statusMap || {};
+  // Blindagem: evita cards duplicados se houver sistemas cadastrados com a mesma sigla
+  const vistos=new Set();
+  const sistemasUnicos = sistemas.filter(s=>{
+    if(vistos.has(s.sigla)) return false;
+    vistos.add(s.sigla); return true;
   });
-}
-
-function tgMigSem(el, tipo){
-  const isOn = el.style.background !== 'var(--surface2)' && el.style.background !== '';
-  const cor = tipo==='Mig' ? '#059669' : '#DC2626';
-  const bgOn = tipo==='Mig' ? '#ECFDF5' : '#FEF2F2';
-  const bdOn = tipo==='Mig' ? '#A7F3D0' : '#FECACA';
-  if(isOn){
-    el.style.background='var(--surface2)';el.style.borderColor='var(--border)';el.style.color='var(--tx3)';
-  } else {
-    el.style.background=bgOn;el.style.borderColor=bdOn;el.style.color=cor;
-  }
-}
-
-function getMigSem(tipo){
-  const grid = el(tipo==='Mig'?'implMigGrid':'implSemGrid');
-  if(!grid) return '';
-  return [...grid.querySelectorAll('[data-sig]')]
-    .filter(d=>{const bg=d.style.background;return bg&&bg!=='var(--surface2)'&&bg!==''&&bg!=='rgb(243, 244, 246)';})
-    .map(d=>d.dataset.sig).join(', ');
-}
-
-function renderSisGrid(sel){
-  el('implSg').innerHTML=sistemas.sort((a,b)=>a.sigla.localeCompare(b.sigla)).map(s=>{
+  el('implSg').innerHTML=sistemasUnicos.sort((a,b)=>a.sigla.localeCompare(b.sigla)).map(s=>{
     const on=sel.includes(s.sigla);
-    return`<div class="si${on?' on':''}" id="si_${s.sigla}" onclick="tgSis('${s.sigla}')">
-      <div class="ck${on?' on':''}" id="ck_${s.sigla}"></div>
-      <div class="dot" style="background:${s.cor||'#6B7280'};"></div>
-      <div class="sn">${s.sigla}<br><span>${s.nome}</span></div>
+    const status = statusMap[s.sigla] || 'falta';
+    return`<div class="si${on?' on':''}" id="si_${s.sigla}">
+      <div style="display:flex;align-items:center;gap:7px;cursor:pointer;" onclick="tgSis('${s.sigla}')">
+        <div class="ck${on?' on':''}" id="ck_${s.sigla}"></div>
+        <div class="dot" style="background:${s.cor||'#6B7280'};"></div>
+        <div class="sn">${s.sigla}<br><span>${s.nome}</span></div>
+      </div>
+      ${on?statusButtons(s.sigla,status):''}
     </div>`;
   }).join('');
+  atualizarResumoSis();
+}
+
+function statusButtons(sig, status){
+  const opts=[
+    {k:'falta', label:'⏳ Falta', cor:'#D97706', bg:'#FFFBEB', bd:'#FDE68A'},
+    {k:'mig',   label:'✅ Implantado', cor:'#059669', bg:'#ECFDF5', bd:'#A7F3D0'},
+    {k:'sem',   label:'🚫 Sem uso', cor:'#DC2626', bg:'#FEF2F2', bd:'#FECACA'},
+  ];
+  return `<div class="sis-status" data-sig="${sig}" style="display:flex;gap:4px;margin-top:6px;">
+    ${opts.map(o=>`<button type="button" onclick="event.stopPropagation();setSisStatus('${sig}','${o.k}')"
+      style="flex:1;font-size:9.5px;font-weight:700;padding:3px 2px;border-radius:6px;cursor:pointer;
+      border:1.5px solid ${status===o.k?o.bd:'var(--border)'};background:${status===o.k?o.bg:'var(--surface)'};color:${status===o.k?o.cor:'var(--tx3)'};">${o.label}</button>`).join('')}
+  </div>`;
+}
+
+function setSisStatus(sig, status){
+  const tile=el('si_'+sig); if(!tile) return;
+  const box=tile.querySelector('.sis-status'); if(!box) return;
+  box.outerHTML=statusButtons(sig,status);
+  atualizarResumoSis();
+}
+
+function coletarStatusSistemas(){
+  const sisSel=[...document.querySelectorAll('.ck.on')].map(e=>e.id.replace('ck_',''));
+  const mig=[], sem=[], falta=[];
+  sisSel.forEach(sig=>{
+    const box=document.querySelector(`.sis-status[data-sig="${sig}"]`);
+    const btnOn = box ? [...box.querySelectorAll('button')].find(b=>b.style.background!=='' && b.style.background!=='var(--surface)') : null;
+    const status = btnOn ? (btnOn.textContent.includes('Implantado')?'mig':btnOn.textContent.includes('Sem uso')?'sem':'falta') : 'falta';
+    if(status==='mig') mig.push(sig); else if(status==='sem') sem.push(sig); else falta.push(sig);
+  });
+  return { sisSel, mig, sem, falta };
+}
+
+function atualizarResumoSis(){
+  const box=el('sisResumo'); if(!box) return;
+  const {sisSel,mig,sem,falta}=coletarStatusSistemas();
+  if(sisSel.length===0){ box.innerHTML=''; return; }
+  box.innerHTML=`<span style="color:#059669;font-weight:700;">✅ ${mig.length} implantado${mig.length!==1?'s':''}</span>
+    &nbsp;·&nbsp;<span style="color:#DC2626;font-weight:700;">🚫 ${sem.length} sem uso</span>
+    &nbsp;·&nbsp;<span style="color:#D97706;font-weight:700;">⏳ ${falta.length} falta${falta.length!==1?'m':''}</span>`;
 }
 
 function tgSis(sig){
+  const wasOn = el('ck_'+sig)?.classList.contains('on');
   el('ck_'+sig)?.classList.toggle('on');
   el('si_'+sig)?.classList.toggle('on');
-  // Atualizar grids de migração e sem uso
-  const sisSel=[...document.querySelectorAll('.ck.on')].map(e=>e.id.replace('ck_',''));
-  const migAtual=getMigSem('Mig').split(', ').filter(Boolean);
-  const semAtual=getMigSem('Sem').split(', ').filter(Boolean);
-  renderMigSemGrids(sisSel,migAtual,semAtual);
+  const tile=el('si_'+sig);
+  if(tile){
+    const existing=tile.querySelector('.sis-status');
+    if(!wasOn && !existing){
+      tile.insertAdjacentHTML('beforeend', statusButtons(sig,'falta'));
+    } else if(wasOn && existing){
+      existing.remove();
+    }
+  }
+  atualizarResumoSis();
 }
 
 async function salvarImpl(){
   const munId=el('implMun').value;
   if(!munId){toast('⚠️ Selecione o município');return;}
-  const sis=[...document.querySelectorAll('.ck.on')].map(e=>e.id.replace('ck_','')).join(', ');
+  const {sisSel,mig,sem}=coletarStatusSistemas();
   const id=el('implId').value;
-  const row={id:id||uid(),municipio_id:munId,tecnico_id:el('implTec').value||null,status:el('implSt').value,fase:el('implFa').value,data_conclusao:el('implDt').value||null,sistemas_str:sis,migracao:getMigSem('Mig'),sem_uso:getMigSem('Sem'),obs:el('implObs').value.trim()};
+  const row={id:id||uid(),municipio_id:munId,tecnico_id:el('implTec').value||null,status:el('implSt').value,fase:el('implFa').value,data_conclusao:el('implDt').value||null,sistemas_str:sisSel.join(', '),migracao:mig.join(', '),sem_uso:sem.join(', '),obs:el('implObs').value.trim()};
   await dbSet('ig3_impl',row);
   const idx=implantacoes.findIndex(r=>r.id===row.id);
   if(idx>-1)implantacoes[idx]=row;else implantacoes.push(row);
@@ -1141,6 +1168,7 @@ function renderMun(){
   renderMunLista();
 }
 function renderMunLista(){
+  if(!el('munTbl')) return;
   const q=(el('buscaMun')?.value||'').toLowerCase();
   let lista=municipios.filter(m=>[m.nome,m.uf,m.prefixo,m.contato].join(' ').toLowerCase().includes(q));
   lista.sort((a,b)=>a.nome.localeCompare(b.nome));
@@ -1156,10 +1184,26 @@ function renderMunLista(){
         <td style="font-size:11px;">${m.contato||'—'}</td>
         <td style="font-size:11px;">${m.whatsapp||'—'}</td>
         <td><span style="font-weight:700;color:var(--brand2);">${qt}</span></td>
-        <td><button class="btn btn-o btn-xs" onclick="abrirMun('${m.id}')">✏️</button></td>
+        <td style="display:flex;gap:4px;">
+          <button class="btn btn-o btn-xs" onclick="abrirMun('${m.id}')" title="Editar">✏️</button>
+          <button class="btn btn-o btn-xs" onclick="excluirMun('${m.id}')" title="Excluir" style="color:var(--err);">🗑️</button>
+        </td>
       </tr>`;
     }).join('')}
     </tbody></table></div>`;
+}
+
+async function excluirMun(id){
+  const m=municipios.find(x=>x.id===id); if(!m) return;
+  const qt=implantacoes.filter(r=>r.municipio_id===id).length;
+  const aviso = qt>0
+    ? `O município "${munLabel(m)}" tem ${qt} implantação(ões) vinculada(s). Elas NÃO serão excluídas, mas ficarão sem município definido.\n\nDeseja excluir mesmo assim?`
+    : `Excluir o município "${munLabel(m)}"?`;
+  if(!confirm(aviso)) return;
+  await dbDel('ig3_mun', id);
+  municipios = municipios.filter(x=>x.id!==id);
+  renderMunLista(); atualizarBadge();
+  toast('🗑️ Município excluído');
 }
 
 function abrirMun(id){
@@ -1176,6 +1220,7 @@ function abrirMun(id){
   const ufs=['BA','SP','MG','RJ','PR','SC','RS','GO','MT','MS','PA','MA','CE','PE','PB','AL','SE','PI','RN','TO','AM','RO','AC','RR','AP','DF','ES'];
   el('munUf').innerHTML=ufs.map(u=>`<option${u===(m?.uf||'BA')?' selected':''}>${u}</option>`).join('');
   el('munPfx').value=m?.prefixo||'PM';
+  el('munDelBtn').style.display = m ? '' : 'none';
   openM('mMun');
 }
 
@@ -1199,6 +1244,7 @@ function renderTec(){
   renderTecCards();
 }
 function renderTecCards(){
+  if(!el('tecCards')) return;
   if(tecnicos.length===0){el('tecCards').innerHTML='<div class="empty" style="grid-column:1/-1;"><div class="ei">👤</div><div class="et">Nenhum técnico</div><div class="es">Cadastre o primeiro técnico</div></div>';return;}
   el('tecCards').innerHTML=tecnicos.map(t=>{
     const qt=implantacoes.filter(r=>r.tecnico_id===t.id&&!['Concluída','Cancelada'].includes(r.status)).length;
@@ -1210,10 +1256,26 @@ function renderTecCards(){
       <div style="font-size:11px;color:var(--tx3);margin-bottom:8px;">${t.email||''}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span class="bdg bd-a">${qt} impl. ativas</span>
-        <button class="btn btn-o btn-xs" onclick="abrirTec('${t.id}')">✏️</button>
+        <div style="display:flex;gap:4px;">
+          <button class="btn btn-o btn-xs" onclick="abrirTec('${t.id}')" title="Editar">✏️</button>
+          <button class="btn btn-o btn-xs" onclick="excluirTec('${t.id}')" title="Excluir" style="color:var(--err);">🗑️</button>
+        </div>
       </div>
     </div>`;
   }).join('');
+}
+
+async function excluirTec(id){
+  const t=tecnicos.find(x=>x.id===id); if(!t) return;
+  const qt=implantacoes.filter(r=>r.tecnico_id===id).length;
+  const aviso = qt>0
+    ? `O técnico "${t.nome}" tem ${qt} implantação(ões) vinculada(s). Elas NÃO serão excluídas, mas ficarão sem técnico responsável.\n\nDeseja excluir mesmo assim?`
+    : `Excluir o técnico "${t.nome}"?`;
+  if(!confirm(aviso)) return;
+  await dbDel('ig3_tec', id);
+  tecnicos = tecnicos.filter(x=>x.id!==id);
+  renderTecCards(); atualizarBadge();
+  toast('🗑️ Técnico excluído');
 }
 
 function abrirTec(id){
@@ -1223,6 +1285,7 @@ function abrirTec(id){
   el('tecId').value=t?.id||'';el('tecNome').value=t?.nome||'';
   el('tecEmail').value=t?.email||'';el('tecCargo').value=t?.cargo||'';
   el('tecWpp').value=t?.whatsapp||'';el('tecObs').value=t?.obs||'';
+  el('tecDelBtn').style.display = t ? '' : 'none';
   openM('mTec');
 }
 
@@ -1258,10 +1321,19 @@ const SIS_DEFAULT=[
 ];
 
 function renderSis(){
-  el('content').innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;" id="sisCards"></div>`;
+  const contagem={};
+  sistemas.forEach(s=>{contagem[s.sigla]=(contagem[s.sigla]||0)+1;});
+  const duplicadas=Object.keys(contagem).filter(sig=>contagem[sig]>1);
+  const aviso = duplicadas.length>0 ? `
+    <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--rb);padding:12px 14px;margin-bottom:14px;font-size:12px;color:#DC2626;">
+      ⚠️ <b>Sigla${duplicadas.length>1?'s':''} duplicada${duplicadas.length>1?'s':''}: ${duplicadas.join(', ')}.</b>
+      Isso pode confundir a marcação de "implantado/sem uso" nas implantações. Use o 🗑️ pra excluir as duplicatas, mantendo só uma de cada.
+    </div>` : '';
+  el('content').innerHTML=`${aviso}<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;" id="sisCards"></div>`;
   renderSisCards();
 }
 function renderSisCards(){
+  if(!el('sisCards')) return;
   el('sisCards').innerHTML=sistemas.map(s=>`
     <div class="card" style="border-left:3px solid ${s.cor||'#6B7280'};">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -1270,10 +1342,26 @@ function renderSisCards(){
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span class="bdg ${s.tipo==='Obrigatório'?'bd-x':'bd-n'}" style="font-size:9px;">${s.tipo||'Opcional'}</span>
-        <button class="btn btn-o btn-xs" onclick="abrirSis('${s.id}')">✏️</button>
+        <div style="display:flex;gap:4px;">
+          <button class="btn btn-o btn-xs" onclick="abrirSis('${s.id}')" title="Editar">✏️</button>
+          <button class="btn btn-o btn-xs" onclick="excluirSis('${s.id}')" title="Excluir" style="color:var(--err);">🗑️</button>
+        </div>
       </div>
     </div>`).join('')+
     (sistemas.length===0?'<div class="empty" style="grid-column:1/-1;"><div class="ei">📦</div><div class="et">Nenhum sistema</div></div>':'');
+}
+
+async function excluirSis(id){
+  const s=sistemas.find(x=>x.id===id); if(!s) return;
+  const qt=implantacoes.filter(r=>psig(r.sistemas_str).includes(s.sigla)).length;
+  const aviso = qt>0
+    ? `O sistema "${s.nome}" (${s.sigla}) está vinculado a ${qt} implantação(ões). Ele será removido do sistema, mas os registros das implantações não serão apagados.\n\nDeseja excluir mesmo assim?`
+    : `Excluir o sistema "${s.nome}" (${s.sigla})?`;
+  if(!confirm(aviso)) return;
+  await dbDel('ig3_sis', id);
+  sistemas = sistemas.filter(x=>x.id!==id);
+  renderSisCards(); atualizarBadge();
+  toast('🗑️ Sistema excluído');
 }
 
 function abrirSis(id){
@@ -1284,6 +1372,7 @@ function abrirSis(id){
   el('sisSig').value=s?.sigla||'';el('sisIco').value=s?.icone||'';
   el('sisCor').value=s?.cor||'#7C3AED';el('sisTipo').value=s?.tipo||'Opcional';
   el('sisTmp').value=s?.tempo||30;
+  el('sisDelBtn').style.display = s ? '' : 'none';
   openM('mSis');
 }
 
@@ -1291,6 +1380,8 @@ async function salvarSis(){
   const nome=el('sisNome').value.trim(), sigla=el('sisSig').value.trim().toUpperCase();
   if(!nome||!sigla){toast('⚠️ Preencha nome e sigla');return;}
   const id=el('sisId').value;
+  const jaExiste = sistemas.find(s=>s.sigla===sigla && s.id!==id);
+  if(jaExiste){toast('⚠️ Já existe um sistema com a sigla "'+sigla+'" ('+jaExiste.nome+')');return;}
   const row={id:id||uid(),nome,sigla,icone:el('sisIco').value||'📦',cor:el('sisCor').value,tipo:el('sisTipo').value,tempo:parseInt(el('sisTmp').value)||30};
   await dbSet('ig3_sis',row);
   const idx=sistemas.findIndex(r=>r.id===row.id);
