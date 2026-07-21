@@ -527,7 +527,11 @@ async function dbSet(table, row) {
           const{error}=await sb.from(table).update({...payload,updated_at:new Date().toISOString()}).eq('id',payload.id);
           if(error) throw error;
         } else {
-          const{data,error}=await sb.from(table).insert([{...payload,id:undefined,created_at:new Date().toISOString(),updated_at:new Date().toISOString()}]).select().single();
+          let payloadInsert={...payload};
+          delete payloadInsert.id; // remove o id local (ex.: "_abc123") para o Supabase gerar o id de verdade
+          payloadInsert.created_at=new Date().toISOString();
+          payloadInsert.updated_at=new Date().toISOString();
+          const{data,error}=await sb.from(table).insert([payloadInsert]).select().single();
           if(error) throw error;
           if(data) row.id=data.id;
         }
