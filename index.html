@@ -511,7 +511,7 @@ async function dbGet(table) {
   if(sb){
     const{data,error}=await sb.from(table).select('*').order('created_at',{ascending:true});
     if(!error&&data){ hideConnErrBanner(); return data; }
-    if(error){ console.warn('dbGet erro em '+table+':', error); showConnErrBanner(table+': '+error.message); }
+    if(error){ console.warn('dbGet erro em '+table+': '+(error.message||error.code||JSON.stringify(error))); showConnErrBanner(table+': '+(error.message||error.code||'erro desconhecido')); }
   }
   return LS.load(table);
 }
@@ -540,8 +540,8 @@ async function dbSet(table, row) {
       }catch(e){
         const colunaRuim=extrairColunaInexistente(e.message);
         if(colunaRuim && colunaRuim in payload){ delete payload[colunaRuim]; continue; }
-        console.warn('dbSet erro em '+table+':', e);
-        showConnErrBanner(table+': '+e.message+' — registro ficou só neste navegador');
+        console.warn('dbSet erro em '+table+': '+(e.message||JSON.stringify(e)));
+        showConnErrBanner(table+': '+(e.message||'erro desconhecido')+' — registro ficou só neste navegador');
         break;
       }
     }
@@ -554,7 +554,7 @@ async function dbDel(table, id) {
   const sb=getSb();
   if(sb&&!String(id).startsWith('_')){
     try{ const{error}=await sb.from(table).delete().eq('id',id); if(error) throw error; hideConnErrBanner(); }
-    catch(e){ console.warn('dbDel erro:',e); showConnErrBanner(table+': '+e.message); }
+    catch(e){ console.warn('dbDel erro: '+(e.message||JSON.stringify(e))); showConnErrBanner(table+': '+(e.message||'erro desconhecido')); }
   }
   LS.del(table,id);
 }
